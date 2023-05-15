@@ -1,0 +1,416 @@
+# ---------- Introduction ----------
+# Import packages 
+## install.packages('MASS')
+## install.packages('leaps')
+## install.packages('glmnet')
+library(glmnet)
+library(MASS)
+library(leaps)
+library(dplyr)
+data(Boston) 
+dim(Boston)  
+
+# Make predictor x and the response y 
+y <- Boston[, 1]
+x <- Boston[, -1]
+
+# Predefined function AIC and BIC and likelihood. 
+# 1. Predicting function for best subsets. 
+predict.regsubsets <- function(x, coefi, ...) {
+  mat.x <- model.matrix(~., x)
+  xvars <- names(coefi)
+  pred <- mat.x[, xvars] %*% coefi
+  return(pred)
+}
+
+# 2. log-likelihood function 
+likelihood <- function(x, y, coefi, sigma){
+  pred <- predict.regsubsets(x, coefi)
+  exp_term = exp(-(y - pred)^2 / (2 * sigma^2))
+  res <- sum(log(exp_term / (sqrt(2 * pi) * sigma)))
+  return(res)
+}
+
+# 3. AIC(Akaike information criterion) 
+aic <- function(ltheta, d) { 
+  res <- (-2 * ltheta) + (2 * d)  
+  return(res)
+}
+
+# 4. BIC(Bayesian information criterion) 
+bic <- function(ltheta, d, n) { 
+  res <- (-2 * ltheta) + (d * log(n))  
+  return(res)
+}
+
+# Pre-define most used variables 
+n <- nrow(x) 
+ybar <- mean(y) 
+
+# ---------- Problem1 ----------
+# Training model with the ordinary square estimate 
+# best subset model regsubsets(x, y, nvmax=13, nbest=1) 
+# n <- nrow(x) : 506 
+
+# \sigma 1 
+sigma_formula1 <- function(y, ybar, n) {
+  res <- sqrt(sum((y - ybar)^2) / (n - 1))
+  return(res)
+}
+
+# train the best subset selection model
+g1 <- regsubsets(x, y, nvmax=13, nbest=1) 
+
+# model evaluation
+metrics1 <- matrix(0, 13, 2)
+for (i in 1:13) {
+  coefi <- coef(g1, id=i)
+  d <- length(coefi) - 1
+  sigma1 <- sigma_formula1(y, ybar, n)
+  ltheta <- likelihood(x, y, coefi, sigma1)
+  metrics1[i, 1] <- aic(ltheta, d)
+  metrics1[i, 2] <- bic(ltheta, d, n)
+}
+
+# find the smallest number of variables based on AIC and BIC
+colnames(metrics1) <- c('AIC', 'BIC')
+metrics1
+wm.a1 <- which.min(metrics1[, 1])
+wm.b1 <- which.min(metrics1[, 2]) 
+
+# Visualization of metrics plot 
+par(mfrow=c(1,2))
+plot(1:13, metrics1[, 1], type="b", pch=20, xlab="Number of Predictors", ylab="AIC")
+points(wm.a1, metrics1[wm.a1, 1], pch="o", col="blue", cex=2)
+plot(1:13, metrics1[, 2], type="b", pch=20, xlab="Number of Predictors", ylab="BIC")
+points(wm.b1, metrics1[wm.b1, 2], pch="o", col="blue", cex=2)
+
+# Print Results 
+cat("The variables included in final model based on AIC : ", names(coef(g1, id=wm.a1)[-1]), sep="\t")
+cat("The number of variables included in final model based on AIC : ", length(names(coef(g1, id=wm.a1))) - 1)
+cat("The value of its AIC : ", metrics1[wm.a1, 1])
+
+cat("The variables included in final model based on BIC : ", names(coef(g1, id=wm.b1))[-1], sep="\t")
+cat("The number of variables included in final model based on BIC : ", length(names(coef(g1, id=wm.b1))) - 1)
+cat("The value of its BIC : ", metrics1[wm.b1, 2])
+
+# ---------- Problem2 ----------
+# \sigma 2
+sigma_formula2 <- function(x, y, coefi, n, d) {
+  pred <- predict.regsubsets(x, coefi)
+  res <- sqrt(sum((y- pred)^2) / (n - d))
+  return(res)
+}
+
+# train the best subset selection model
+g2 <- regsubsets(x, y, nvmax=13, nbest=1) 
+
+# model evaluation : this tasks will be same without applying different sigma 
+metrics2 <- matrix(0, 13, 2)
+for (i in 1:13) {
+  coefi <- coef(g2, id=i)
+  d <- length(coefi) - 1
+  sigma2 <- sigma_formula2(x, y, coefi, n, d)
+  ltheta <- likelihood(x, y, coefi, sigma2)
+  metrics2[i, 1] <- aic(ltheta, d)
+  metrics2[i, 2] <- bic(ltheta, d, n)
+}
+
+# find the smallest number of variables based on AIC and BIC
+colnames(metrics2) <- c("AIC", "BIC") 
+metrics2
+wm.a2 <- which.min(metrics2[, 1])
+wm.b2 <- which.min(metrics2[, 2]) 
+
+# Visualization of metrics plot 
+par(mfrow=c(1,2))
+plot(1:13, metrics2[, 1], type="b", pch=20, xlab="Number of Predictors", ylab="AIC")
+points(wm.a2, metrics2[wm.a2, 1], pch="o", col="blue", cex=2)
+plot(1:13, metrics2[, 2], type="b", pch=20, xlab="Number of Predictors", ylab="BIC")
+points(wm.b2, metrics2[wm.b2, 2], pch="o", col="blue", cex=2)
+
+# Print Results 
+cat("The variables included in final model based on AIC : ", names(coef(g2, id=wm.a2)[-1]), sep="\t")
+cat("The number of variables included in final model based on AIC : ", length(names(coef(g2, id=wm.a2))) - 1)
+cat("The value of its AIC : ", metrics2[wm.a2, 1])
+
+cat("The variables included in final model based on BIC : ", names(coef(g2, id=wm.b2))[-1], sep="\t")
+cat("The number of variables included in final model based on BIC : ", length(names(coef(g2, id=wm.b2))) - 1)
+cat("The value of its BIC : ", metrics1[wm.b2, 2])
+
+# ---------- Problem3 ----------
+likelihood2 <- function(y, pred, sigma){
+  exp_term = exp(-(y - pred)^2 / (2 * sigma^2))
+  res <- sum(log(exp_term / (sqrt(2 * pi) * sigma)))
+  return(res)
+}
+
+# Set hyper parameters grid lambda 
+lambda <- 10^seq(0.8, -3, length=1000)
+
+# training model 
+g3 <- glmnet(x, y, alpha=1, lambda=lambda)
+
+# model evaluation
+metrics3 <- matrix(0, length(g3$lambda), 2)
+for (i in 1:length(g3$lambda)) {
+  d <- g3$df[i]
+  pred <- predict(g3, s=g3$lambda[i], newx=model.matrix(~., x)[,-1])
+  ltheta <- likelihood2(y, pred, sigma1)
+  metrics3[i, 1] <- aic(ltheta, d)
+  metrics3[i, 2] <- bic(ltheta, d, n)
+}
+
+# find the smallest number of variables based on AIC and BIC
+colnames(metrics3) <- c('AIC', 'BIC')
+metrics3[sample(1:800, 10, replace=FALSE),]
+wm.a3 <- which.min(metrics3[, 1])
+wm.b3 <- which.min(metrics3[, 2]) 
+
+# Visualization of metrics plot 
+par(mfrow=c(1,2))
+plot(log(g3$lambda), metrics3[, 1], type="b", pch=20, xlab="log(lambda)", ylab="AIC")
+points(log(g3$lambda)[wm.a3], metrics3[wm.a3, 1], pch="o", col="blue", cex=2)
+plot(log(g3$lambda), metrics3[, 2], type="b", pch=20, xlab="log(lambda)", ylab="BIC")
+points(log(g3$lambda)[wm.b3], metrics3[wm.b3, 2], pch="o", col="blue", cex=2)
+
+# Print Results 
+coef3a <- coef(g3, s=g3$lambda[wm.a3])
+cat("The variables included in final model based on AIC : ", coef3a@Dimnames[[1]][which(coef3a != 0)][-1], sep="\t")
+cat("The number of variables included in final model based on AIC : ", length(coef3a@Dimnames[[1]][which(coef3a != 0)][-1]))
+cat("The value of its AIC : ", metrics3[wm.a3, 1])
+
+coef3b <- coef(g3, s=g3$lambda[wm.b3])
+cat("The variables included in final model based on BIC : ", coef3b@Dimnames[[1]][which(coef3b != 0)][-1], sep="\t")
+cat("The number of variables included in final model based on BIC : ", length(coef3b@Dimnames[[1]][which(coef3b != 0)][-1]))
+cat("The value of its BIC : ", metrics3[wm.b3, 2])
+
+# ---------- Problem4 ----------
+sigma2_lasso <- function(d, xvars) {
+  if (length(xvars) == 0) {
+    # If there is no selected variables from glmnet, return ols_pred as ybar.
+    # Then the result will be sigma1. 
+    return(sigma_formula1(y, ybar, n))
+  } else {
+    # This will calculate after we select variables from lasso.
+    mat.x <- x[ , xvars]
+    ols <- lm(y~as.matrix(mat.x))
+    ols_pred <- as.matrix(cbind(1, mat.x)) %*% ols$coefficients
+  }
+  res <- sqrt(sum((y- ols_pred)^2) / (n - d))
+  return(res)
+}
+
+# Set hyper parameters grid lambda 
+lambda <- 10^seq(0.8, -3, length=1000)
+
+# Train model 
+g4 <- glmnet(x, y, alpha=1, lambda=lambda)
+
+# model evaluation
+metrics4 <- matrix(0, length(g4$lambda), 2)
+for (i in 1:length(g4$lambda)) {
+  d <- g4$df[i]
+  coefi <- coef(g4, s=g4$lambda[i])
+  xvars <- coefi@Dimnames[[1]][which(coefi != 0)][-1]
+  sigma2 <- sigma2_lasso(d, xvars)
+  pred <- predict(g4, s=g4$lambda[i], newx=model.matrix(~., x)[,-1])
+  ltheta <- likelihood2(y, pred, sigma2)
+  metrics4[i, 1] <- aic(ltheta, d)
+  metrics4[i, 2] <- bic(ltheta, d, n)
+}
+
+# find the smallest number of variables based on AIC and BIC
+colnames(metrics4) <- c('AIC', 'BIC')
+metrics4[sample(1:800, 10, replace=FALSE),]
+wm.a4 <- which.min(metrics4[, 1])
+wm.b4 <- which.min(metrics4[, 2]) 
+
+# Visualization of metrics plot 
+par(mfrow=c(1,2))
+plot(log(g4$lambda), metrics4[, 1], type="b", pch=20, xlab="log(lambda)", ylab="AIC")
+points(log(g4$lambda)[wm.a4], metrics4[wm.a4, 1], pch="o", col="blue", cex=2)
+plot(log(g4$lambda), metrics4[, 2], type="b", pch=20, xlab="log(lambda)", ylab="BIC")
+points(log(g4$lambda)[wm.b4], metrics4[wm.b4, 2], pch="o", col="blue", cex=2)
+
+# Print Results 
+coef4a <- coef(g4, s=g4$lambda[wm.a4])
+cat("The variables included in final model based on AIC : ", coef4a@Dimnames[[1]][which(coef4a != 0)][-1], sep = "\t")
+cat("The number of variables included in final model based on AIC : ", length(coef4a@Dimnames[[1]][which(coef4a != 0)][-1]))
+cat("The value of its AIC : ", metrics4[wm.a4, 1])
+
+coef4b <- coef(g4, s=g4$lambda[wm.b4])
+cat("The variables included in final model based on BIC : ", coef4b@Dimnames[[1]][which(coef4b != 0)][-1], sep="\t")
+cat("The number of variables included in final model based on BIC : ", length(coef4b@Dimnames[[1]][which(coef4b != 0)][-1]))
+cat("The value of its BIC : ", metrics4[wm.b4, 2])
+
+
+# ---------- Problem 5 ---------- #
+# \sigma 3
+sigma_formula3 <- function(y, pred, n, d) {
+  res <- sqrt(sum((y- pred)^2) / (n - d))
+  return(res)
+}
+
+# Set hyper parameters grid lambda 
+lambda <- 10^seq(0.8, -3, length=1000)
+
+# Train model 
+g5 <- glmnet(x, y, alpha=1, lambda=lambda)
+
+# model evaluation
+metrics5 <- matrix(0, length(g5$lambda), 2)
+for (i in 1:length(g5$lambda)) {
+  d <- g5$df[i]
+  pred <- predict(g5, s=g5$lambda[i], newx=model.matrix(~., x)[,-1])
+  sigma3 <- sigma_formula3(y, pred, n, d)
+  ltheta <- likelihood2(y, pred, sigma3)
+  metrics5[i, 1] <- aic(ltheta, d)
+  metrics5[i, 2] <- bic(ltheta, d, n)
+}
+
+# find the smallest number of variables based on AIC and BIC
+colnames(metrics5) <- c('AIC', 'BIC')
+metrics5[sample(1:800, 10, replace=FALSE),]
+wm.a5 <- which.min(metrics5[, 1])
+wm.b5 <- which.min(metrics5[, 2]) 
+
+# Visualization of metrics plot 
+par(mfrow=c(1,2))
+plot(log(g5$lambda), metrics5[, 1], type="b", pch=20, xlab="log(lamda)", ylab="AIC")
+points(log(g5$lambda)[wm.a5], metrics5[wm.a5, 1], pch="o", col="blue", cex=2)
+plot(log(g5$lambda), metrics5[, 2], type="b", pch=20, xlab="log(lambda)", ylab="BIC")
+points(log(g5$lambda)[wm.b5], metrics5[wm.b5, 2], pch="o", col="blue", cex=2)
+
+# Print Results 
+coef5a <- coef(g5, s=g5$lambda[wm.a5])
+cat("The variables included in final model based on AIC : ", coef5a@Dimnames[[1]][which(coef5a != 0)][-1], sep="\t")
+cat("The number of variables included in final model based on AIC : ", length(coef5a@Dimnames[[1]][which(coef5a != 0)][-1]))
+cat("The value of its AIC : ", metrics5[wm.a5, 1])
+
+coef5b <- coef(g5, s=g5$lambda[wm.b5])
+cat("The variables included in final model based on BIC : ", coef5b@Dimnames[[1]][which(coef5b != 0)][-1], sep="\t")
+cat("The number of variables included in final model based on BIC : ", length(coef5b@Dimnames[[1]][which(coef5b != 0)][-1]))
+cat("The value of its BIC : ", metrics5[wm.b5, 2])
+
+# ------------- Problem 6 ------------ # 
+# Randomly separate a training set and test set
+set.seed(4321)
+tran <- sample(n, 400) 
+test <- setdiff(1:nrow(x), tran) 
+
+# Define function for finding 10 best subsets from the training set. 
+# This will return \beta_{ols} and selected_variables
+
+find_best_model <- function(x, y, model_numbers) {
+  # if : regsubsets function for M_1 ~ M_4
+  # else : glmnet function for M_5 ~ M10
+  if (model_numbers <= 4) {
+    # train model
+    g <- regsubsets(x, y, nvmax=13, nbest=1)
+    
+    # model evaluation
+    metrics <- matrix(0, 13, 1) 
+    for (i in 1:13) {
+      coefi <- coef(g, id=i) 
+      d <- length(coefi) - 1
+      # if : evaluation based on sigma1
+      # else : evaluation based on sigma2
+      if (model_numbers <= 2) {
+        sigma1 <- sigma_formula1(y, ybar, n) 
+        ltheta <- likelihood(x, y, coefi, sigma1)
+      } else { 
+        sigma2 <- sigma_formula2(x, y, coefi, n, d)
+        ltheta <- likelihood(x, y, coefi, sigma2)
+      }
+      # if : evaluation based on AIC 
+      # else : evaluation based on BIC 
+      if (model_numbers %% 2 != 0) { 
+        metrics[i, 1] <- aic(ltheta, d)
+      } else { 
+        metrics[i, 1] <- bic(ltheta, d, n)
+      }
+    }
+    # Find the smallest number of variables and return results 
+    wm <- which.min(metrics) 
+    min_vars <- names(coef(g, id=wm)[-1])
+    min_coef <- coef(g, id=wm)
+    return(list(min_vars, min_coef))
+  } else { 
+    lambda <- 10^seq(0.8, -3, length=1000)
+    g <- glmnet(x, y, alpha=1, lambda=lambda)
+    
+    # model evaluation
+    metrics <- matrix(0, length(g$lambda), 1)
+    for (i in 1:length(g$lambda)) {
+      d <- g$df[i]
+      pred <- predict(g, s=g$lambda[i], newx=model.matrix(~., x)[,-1])
+      # if : evaluation based on sigma1
+      # elif : evaluation based on sigma2
+      # else : evaluation based on sigma3
+      if (model_numbers <= 6) {
+        sigma1 <- sigma_formula1(y, ybar, n) 
+        ltheta <- likelihood2(y, pred, sigma1)
+      } else if (model_numbers <= 8) {
+        xvars <- rownames(coef(g, s=g$lambda[i]))[-1]
+        sigma2 <- sigma2_lasso(d, xvars) 
+        ltheta <- likelihood2(y, pred, sigma2)
+      } else {
+        sigma3 <- sigma_formula3(y, pred, n, d)
+        ltheta <- likelihood2(y, pred, sigma3)
+      }
+      # if : evaluation based on AIC 
+      # else : evaluation based on BIC 
+      if (model_numbers %% 2 != 0) { 
+        metrics[i, 1] <- aic(ltheta, d)
+      } else { 
+        metrics[i, 1] <- bic(ltheta, d, n)
+      }
+    }
+    # Find the smallest number of variables and return results 
+    wm <- which.min(metrics) 
+    coefm <- coef(g, s=g$lambda[wm])
+    min_vars <- coefm@Dimnames[[1]][which(coefm != 0)][-1]
+    min_coef <- coefm
+    return(list(min_vars, min_coef))
+  }
+}
+
+calculate_test_error <- function(x, y, xvars, coef_, model_number) {
+  # if : Calculate test error based on regsubsets
+  # else : Calculate test error based on glmnet 
+  if (model_number <= 4) {
+    pred <- model.matrix(~., test_X[, xvars]) %*% train_result[[2]]
+  } else { 
+    pred <- model.matrix(~., test_X) %*% train_result[[2]]
+  }
+  test_error <- mean((test_y - pred)^2)
+  return(test_error)
+}
+
+# Declare result matrix (10 X 14)
+res <- matrix(0, 10, ncol(x) + 1)
+colnames(res) <- c(colnames(x), 'TE') 
+rownames(res) <- c('Q1-AIC', 'Q1-BIC', 'Q2-AIC', 'Q2-BIC', 'Q3-AIC', 'Q3-BIC', 'Q4-AIC', 'Q4-BIC', 'Q5-AIC', 'Q5-BIC')
+
+for (i in 1:10) { 
+  train_X <- x[tran, ]
+  train_y <- y[tran]
+  test_X <- x[test,]
+  test_y <- y[test]
+  
+  # Find the best model from each problems 
+  train_result <- find_best_model(train_X, train_y, i)
+  xvars <- as.vector(train_result[[1]])
+  # Calculate Test Error based on MSE and selected variables
+  res[i, 'TE'] <- calculate_test_error(test_X, test_y, xvars, train_result[[2]], i)
+  res[i , xvars] <- 1
+}
+# Check the table
+res
+
+dev.off()
+# Visualization result 
+wm.t <- which.min(res[ , 'TE'])
+plot(factor(rownames(res)), res[ , 'TE'], type="b", pch=20, cex=0.2, xlab="Models", ylab="Test Error")
+points(factor(rownames(res))[wm.t], res[wm.t, 'TE'], pch="x", col="red", cex=2)

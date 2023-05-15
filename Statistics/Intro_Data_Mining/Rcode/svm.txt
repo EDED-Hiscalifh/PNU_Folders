@@ -1,0 +1,58 @@
+setwd("E:\\데이터마이닝")
+
+###################################### EX-1
+spam <- read.table('spam.txt', header=T, sep='\t')
+str(spam)
+spamTrain <- spam[spam$rgroup>=10,]
+spamTest <- spam[spam$rgroup<10,]
+
+spamVars <- setdiff(colnames(spam),list('rgroup','spam'))
+
+###logistic reg.
+spamFormula <- as.formula(paste('spam=="spam"',
+			paste(spamVars,collapse=' + '),sep=' ~ '))
+spamModel <- glm(spamFormula,family=binomial(link='logit'),data=spamTrain)
+
+spamTest$pred <- predict(spamModel,newdata=spamTest, type='response')
+print(with(spamTest,table(y=spam,glPred=pred>=0.5)))
+
+###SVM
+library(kernlab)
+spamFormulaV <- as.formula(paste('spam',paste(spamVars,collapse=' + '),sep=' ~ '))
+svmM <- ksvm(spamFormulaV,data=spamTrain, kernel='rbfdot',C=10, prob.model=T, cross=5)
+spamTest$svmPred <- predict(svmM,newdata=spamTest,type='response')
+print(with(spamTest,table(y=spam,svmPred=svmPred)))
+print(svmM)
+
+head(predict(svmM,spamTest,type='probabilities' ))
+
+###################################### EX-2
+library(kernlab)
+data(spirals) 
+
+set.seed(1)
+sc <- specc(spirals, centers = 2)   
+s <- data.frame(x=spirals[,1],y=spirals[,2],class=as.factor(sc))
+
+library('ggplot2')
+ggplot(data=s) + geom_text(aes(x=x,y=y,label=class,color=class)) +
+   coord_fixed() + theme_bw() + theme(legend.position='none')
+
+set.seed(123)
+s$group <- sample.int(100,size=dim(s)[[1]],replace=T)
+sTrain <- subset(s,group>10)
+sTest <- subset(s,group<=10)
+
+
+library(e1071)
+mSVMV <- svm(class~x+y,data=sTrain,kernel='linear',type='C-classification')    
+sTest$predSVMV <- predict(mSVMV,newdata=sTest,type='response')  
+print(with(sTest,table(y=class,svmPred=predSVMV)))
+
+tune.result<-tune(svm, class~x+y,data=sTrain,kernel='linear',type='C-classification', 
+		range=list(gamma=seq(0,1,0.1),cost=2^(1:9)))
+
+ggplot() + geom_text(data=sTest,aes(x=x,y=y,label=predSVMV),size=12) +
+   	geom_text(data=s,aes(x=x,y=y,label=class,color=class),alpha=0.7) +
+   	coord_fixed() + theme_bw() + theme(legend.position='none') 
+

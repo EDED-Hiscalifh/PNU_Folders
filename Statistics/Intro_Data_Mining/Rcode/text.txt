@@ -1,0 +1,161 @@
+# Install
+install.packages("tm")  # for text mining
+install.packages("SnowballC") # for text stemming
+install.packages("wordcloud") # word-cloud generator 
+install.packages("RColorBrewer") # color palettes
+# Load
+library("tm")
+library("SnowballC")
+library("wordcloud")
+library("RColorBrewer")
+
+filePath <- "http://www.sthda.com/sthda/RDoc/example-files/martin-luther-king-i-have-a-dream-speech.txt"
+text <- readLines(filePath)
+
+docs <- Corpus(VectorSource(text))
+inspect(docs)
+
+text_corpus <- VCorpus(x = VectorSource(docs), readerControl = list(reader=readPlain, language="en"))
+inspect(text_corpus)
+
+data <- c('1.','a')
+gsub("a", "b", data) #stringr 패키지의 str_replace_all
+gsub("a", "", data)
+gsub('[0-9]','', data)
+gsub("[[:punct:]]", "", data)
+gsub("^a", "", data)
+gsub("^[ab]", "", data)
+gsub("[^ab]", "", data)
+
+toSpace <- content_transformer(function(x , pattern) gsub(pattern, " ", x))
+docs <- tm_map(docs, toSpace, "/")
+docs <- tm_map(docs, toSpace, "@")
+docs <- tm_map(docs, toSpace, "\\|")
+
+docs <- tm_map(docs, content_transformer(tolower))
+docs <- tm_map(docs, removeNumbers)
+docs <- tm_map(docs, removeWords, stopwords("english"))
+docs <- tm_map(docs, removeWords, c("blabla1", "blabla2")) 
+docs <- tm_map(docs, removePunctuation)
+docs <- tm_map(docs, stripWhitespace)
+docs <- tm_map(docs, stemDocument)
+inspect(docs)
+
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+
+
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+findFreqTerms(dtm, lowfreq = 4)
+findAssocs(dtm, terms = "freedom", corlimit = 0.3)
+
+head(d, 10)
+
+barplot(d[1:10,]$freq, las = 2, names.arg = d[1:10,]$word,
+        col ="lightblue", main ="Most frequent words",
+        ylab = "Word frequencies")
+
+###########################################################################
+install.packages("readtext")
+library(readtext)
+filepath <- 'https://raw.githubusercontent.com/kbenoit/readtext/master/inst/extdata/csv/inaugCorpus.csv'
+rt <- readtext(filepath, text_field = 'texts')
+rt
+
+install.packages("stringi")
+library(stringi)
+x <- c('The first string', ' The <font size="6">second string</font>')
+x <- stri_replace_all(x, "", regex = "<.*?>") 
+x <- stri_trim(x)
+x <- stri_trans_tolower(x) 
+x
+
+install.packages("quanteda")
+library(quanteda)
+text <- "An example of preprocessing techniques"
+toks <- tokens(text) # tokenize into unigrams
+toks
+
+toks <- tokens_tolower(toks)
+toks <- tokens_wordstem(toks)
+toks
+
+sw <- stopwords("english") 
+head(sw) 
+tokens_remove(toks, sw)
+
+text <- c(d1 = "An example of preprocessing techniques",
+          d2 = "An additional example",
+          d3 = "A third example")
+
+dtm <- dfm(text, tolower = TRUE, stem = TRUE, remove = stopwords("english")) 
+dtm
+
+fulltext <- corpus(rt)
+fulltext <- tokens(fulltext )
+dtm <- dfm(fulltext, tolower = TRUE, stem = TRUE, remove_punct = TRUE,remove = stopwords("english"))
+dtm
+
+
+doc_freq <- docfreq(dtm) 
+dtm <- dtm[, doc_freq >= 2] 
+dtm <- dfm_weight(dtm, 'prop')
+head(dtm)
+
+dtm <- dfm(tokens(data_corpus_inaugural), stem = TRUE, remove = stopwords("english"), remove_punct = TRUE)
+dtm
+
+myDict <- dictionary(list(terror = c("terror*"),
+                          economy = c("job*", "business*", "econom*")))
+dict_dtm <- dfm_lookup(dtm, myDict, nomatch = "_unmatched")
+tail(dict_dtm)
+
+
+install.packages('igraph')
+library(igraph)
+termMatrix <- (m) %*% t(m)
+g <- graph.adjacency(termMatrix, weighted=T, mode = "undirected")
+g <- simplify(g)
+V(g)$label <- V(g)$name
+V(g)$degree <- degree(g)
+
+set.seed(123)
+layout1 <- layout.fruchterman.reingold(g)
+plot(g, layout=layout1)
+plot(g, layout=layout.kamada.kawai)
+
+
+V(g)$label.cex <- 2.2 * V(g)$degree / max(V(g)$degree)+ .2
+V(g)$label.color <- rgb(0, 0, .2, .8)
+V(g)$frame.color <- NA
+egam <- (log(E(g)$weight)+.4) / max(log(E(g)$weight)+.4)
+E(g)$color <- rgb(.5, .5, 0, egam)
+E(g)$width <- egam
+plot(g, layout=layout1)
+
+
+
+
+m <- m[1:30,]
+word.count <- rowSums(m)
+word.order <- order(word.count, decreasing = T)
+freq.words <- m[word.order[1:20],]
+termMatrix <- freq.words %*% t(freq.words)
+g <- graph.adjacency(termMatrix, weighted=T, mode = "directed")
+g <- simplify(g)
+plot(g)
+plot(g, layout=layout.fruchterman.reingold, vertex.size=20, vertex.color='white', edge.arrow.size=.5)
+
+
+V(g)$dc <- degree(g)
+top.three <- head(sort(degree(g), decreasing=T), n=3)
+V(g)$color <- ifelse(V(g)$dc >= top.three[3], 'tomato', 'white')
+plot(g)
+
+

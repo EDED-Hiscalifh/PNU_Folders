@@ -1,0 +1,378 @@
+# 데이터 입력
+
+1. 외부 텍스트 파일 읽기
+
+DATA mysas.company;								DATA : 라이브러리명 + 저장 파일명 
+INFILE "path/file";									INFILE : 경로명 + 파일명 
+INPUT id 1-2 age 3 gender $ 4 item1 5 item2 6 item3 7; 					INPUT : 데이터 칼럼명 + 형태 + 길이 지정 
+LABEL id = 고객변호 age = 나이 gender = 성별 item1 = 노력 					LABEL : 데이터 칼럼 설명
+RUN;
+
+
+
+
+2. 라이브러리를 활용한 데이터 저장
+
+LIBNAME mysas "c:/SAS_Programming/SAS_Data";						LIBNAME : 라이브러리 명을 지정하고 저장할 경로를 입력한다.
+DATA mysas.company; 								# '/folders/myfolders/library' : 라이브러리 주소 
+INFILE "path/file";
+INPUT id 1-2 age 3 gender $ 4 item1 5 item2 6 item3 7;
+LABEL id = '고객번호' age = '나이' gender = '성별'
+RUN; 
+
+
+
+
+3. 프로그램 내 데이터 입력
+
+LIBNAME mysas "c:/SAS_Progrmming/SAS_Data;
+DATA mysas.company;
+INPUT name $ gender $ age height weight;
+LABEL name = '이름' gender = '성별' age = '나이' height = '키' weight = '몸무게';
+CARDS;										CARDS : 데이터를 프로그램내에서 직접입력 가능하다. 
+김철수 M 19 175 80
+김영희 F 19 160 50
+정석규 M 24 177 72
+김아영 F 23 172 53
+우민석 M 24 175 80
+김효진 F 22 155 45
+;
+RUN;
+
+
+
+
+4. INPUT명령 규칙 : 데이터를 읽을 때 사용한다.
+ 
+1) 자유포맷 : 공백문자에 분리되어 자유롭게 입력 
+
+INPUT id name $ class $ score gender $;
+2590 john Stat 80.3 A
+	3566 willy Math . B								. : 데이터 입력 시에 . 은 결측치로 입력된다. 
+
+2) COLUMN FORMAT : 고정포맷(데이터를 읽는 길이)
+
+INPUT name $ 11-18 class $ 20 - 25 classid 1-4 score 36-40 grade $ 41; 				- 열시지자에 따라 변수를 읽어들인다. 
+
+2) Formatted input : 표준화 시켜 데이터를 읽어들인다
+
+3) 포인터 조절 : 
+
+INPUT name $ 18. +1 hired DATE7. +1 salary 5;						- 현재 읽고 있는 커서의 위치를 +n 칸만큼 이동시킨다. 			- 
+
+4) Mixed Format : 
+- $ : 문자형 변수 뒤에 붙인다. 
+- n1 - n2 : n1~n2길이의 데이터를 읽는다.
+- $n. : 빈칸삭제 DATE7 : datetime 변수 읽기
+- +n : n만큼 커서의 위치를 이동한다.
+- / : 포인터를 다음줄로 이동시킨다. 
+- #n : 포인터의 위치를 데이터의 매 n 번쨰 행의 첫 열로 이동시키도록 지정 /의 n특수 지정 
+- @@ : 포인터가 다음줄로 이동하지 않게 지정 
+- @ : IF 명령문이 존재할시 고정 포맷이 끝나더라도 끝까지 명령문을 수행함
+- FIRSTOPBS = n : n번째 열부터 자료를 읽기 시작하도록 지정 
+- INFLIE CADS MISSOVER : 자료값의 개수가 적게 입력되어 있는 경우 결측값으로 처리 
+- DLM, DSD, EXPANDTABS : 구분자가 특정, 컴마, 탭으로 구분되어 있는경우, 값을 읽음(deliminated) 
+
+
+
+
+
+
+5. 명령문 : 데이터를 입력할 때 추가적으로 새로운 변수를 생성하여 데이터에 추가할 때 사용한다. 
+
+1) 할당문 : 자료값을 바꾸거나 새로운 변수를 생성한다. 
+
+- Variable(변수명) = Expression (변수 구성식) 
+- 문자열 :  "" Expression 안에 구분해줌 
+- ||(연결연산자) : 문자열과 문자 변수를 연결해줌 (새로운 + 기존 문자열) 
+
+DATA mysas.exam;
+INPUT id $ name $ mid final;
+CARDS;
+~~~
+;
+RUN;
+
+DATA mysas.exam1;
+SET DATA mysas.exam;								SET : 기존 데이터를 복사해와서 저장한다.
+x = 30; major = '통계학'; major_id = "STA"||id; mean = (mid + final)/2; y = mid **3;
+RUN; 
+
+DATA mysas.finexam;								- 기존 데이터에 변수를 추가로 덧씌울 수 있다.
+INPUT name $ 1-11 mid final endterm endterd;
+mid = INT(mid);
+max_mf = MAX(mid, final, 30);
+name = COMPRESS(name);
+f_name = SUBSTR(name,1,2);
+ent_day = MDY(endterm, endterd, 1999);
+ent_week = WEEKDAY(ent_day);
+FORMAT ent_day yymmdd6.;
+CARDS;
+김 철 수 10.1 40 11 22
+이 영희  15.7 10 11 29 
+강민호   50.3 15 12 05
+박지 수  20.8 . 12 15
+;
+RUN;
+
+DATA mysas.avscore;									MEAN(OF ) SUM(OF) : 변수 이름을 생략하여 사용하고자 하는 경우 
+INPUT name$ (x1-x3)(1.) y1-y3;
+total = SUM(OF x1-x3 y1-y3);
+average = MEAN(OF x1-x3 y1-y3);
+CARDS;
+김철수 551 2 1 3
+최민지 .31 4 5 1
+이영희 153 2 . 2
+오인수 412 4 . .
+;
+RUN;										
+
+
+2) 조건문 : IF - THEN 명령문, 특정 조건에 부합하는 개채에 대해서만 사용하고자 하는 경우 
+- IF (condition) THEN (action) ;
+- IN : 여러개의 자료값을 나열할 때 유용하게 사용 IF mid = 10 and 15와 동일하게 사용 
+
+DATA mysas.exam2;
+SET mysas.exam;									- 데이터 복사
+IF final =. THEN final = 10;
+IF (mid+final) > 50 THEN score1 = "P";							- IF 조건문 사용 
+IF mid > 30 or final >= 30 THEN score2 = "P";
+IF score1 = "" THEN 
+DO; 										- DO : 반복수행 
+score1 = "F";
+score2 = "F";
+END; RUN;
+
+- IF THEN ELSE : 
+
+IF (condition) THEN (action);
+ELSE IF (condition2) THEN (action2);
+ELSE (action3);
+
+- IF THEN DELETE : 데이터를 삭제하는 명령문
+DATA mysas.person1;
+SET mysas.person;
+IF dept='math' OR dept='econ' THEN DELETE;
+RUN; 
+
+
+3) 날짜 변수 : 
+- FORMAT : 날짜 변수를 재지정 
+
+
+4) 여러가지 명령문 : 
+- LENGTH : SAS데이터셋에 변수가 저장될 떄 사용되는 바이트 수를 지정 
+
+DATA mysas.length;
+LENGTH name $ 9 grad $ 6;
+INPUT name$ score;
+IF 1 <=score <= 3 THEN grade = "LOW";
+ELSE IF 4<=score<=7 THEN grade = "MIDDLE";
+ELSE IF 8<=score<=10 THEN grade = "HIGH";
+CARDS;
+HyunCheol 7
+YongChan 10
+MinHee 3
+;
+RUN;
+
+- RETAIN : 어떤 변수의 값을 바로 전 단계에서의 값을 유지시키고자 할 떄 사용, 초기값을 지정하는 경우
+ex) while 문에서 적용되는 init = 0 값 
+
+DATA mysas.case;
+INPUT name$ x @@;
+RETAIN max_x 0 y 0 oldname "***";
+max_x = MAX(max_x, x)
+Y = y+x*x
+IF name = oldname THEN case = "Old";
+ELSE case = "New";
+oldname = name;
+DROP oldname;
+CARDS;
+AAA 1 BBB 4 BBB 8 BBB 3 
+CCC 2 CCC 5 DDD 6
+;
+RUN;
+
+
+- ARRAY : R의 벡터와 같다, 반복적으로 수행을 할때 사용
+
+DATA mysas.tscore;
+INPUT name$ math stat eng kor art;
+ARRAY tscore [5] math stat eng kor art;							# ARRAY[n] n개의 벡터 를 생성함
+DO i=1 TO 5;			
+IF tscore(i)=9 THEN tscore(i)=.;								# math[1], stat[1] ... math[5] stat[5] 순으로 데이터를 적용함 
+END;
+CARDS;
+김철수 5 5 1 2 1
+최민지 9 3 1 4 5
+이영희 1 5 3 2 9
+오인수 4 1 2 4 9
+;
+RUN;
+
+- RETURN : 조건을 만족하는 경우 그 이후의 작업 전체를 수행하지 않음 
+- LINK : 데이터 단계를 종료한다 
+- GOTO : 조건을 만족하는 경우 특정 단계의 작업으로 건너 뛰고 작업을 수행함
+
+DATA goto;
+INPUT year weight damage plant;
+IF year = 78 THEN GOTO sub;
+~
+RETURN;
+sub : ~
+~;
+CARDS;
+
+
+
+6. 데이터셋의 결합 및 관리 
+
+1) SET 명령문 : 데이터셋의 전체 혹은 일부를 읽는 경우
+
+DATA mysas.data2 ;				
+SET mysas.data1 mysas.data0; 								# 세로결합
+
+DATA mysas.male;
+INPUT name $ sex $ mid final pre;
+CARDS;
+
+DATA mysas.female;
+INPUT name $ sex $ mid final;
+CARDS;
+
+DATA mysas.concat;									# 세로 결합, 결측치는 자동으로 설정 
+SET mysas.male mysas.female;
+If final=. THEN final = mid;
+RUN; 	
+
+DATA mysas.merge;									# 가로 결합, left key에 맞춰 merge를 진행한다
+MERGE mysas.one mysas.two;
+RUN;
+
+
+
+PROC SORT DATA = mysas.mid;
+BY name; RUN;
+
+PROC SORT DATA = mysas.final;
+BY name; RUN; 
+
+DATA mysas.all;										# 가로결합, BY key에 맞춰 merge를 진행한다.  + SORTING을 선행한다. 
+MERGE mysas.mid mysas.final;
+BY name;
+RUN;
+
+DATA mysas.all1;										# 결측치가 있는 경우 데이터 셋의 값을 그대로 유지하고자 하는 경우 
+UPDATE mysas.mid mysas.final;
+BY name;
+RUN;
+
+DATA mysas.all2;										# KEEP : 데이터 셋에 포함될 변수들을 지정 
+UPDATE mysas.mid(KEEP=name mid pre OBS=4) mysas.final(DROP=sex RENAME=(pre=pre1));		# DROP : 포함되지 않을 변수들을 지정 
+BY name;											# RENAME : 변수명 변경
+RUN;											# FIRSTOBS : 시작위치 
+
+
+
+
+
+
+# 프로시저 입력 : 데이터 분석을 위한 연산을 수행 
+
+
+1. MEANS 프로시저 : 단변량 기술통계량 제공 
+PROC MEANS DATA = mysas.company; MAXDEC = 2 MEAN STD CV RANGE;			MAXDEC : 최대 소수점 + 통계량 지정 
+CLASS gender									CLASS : 분석의 기준이 될 칼럼명 
+VAR age height weight;								VAR : 분석에 사용할 칼럼명
+TITLE '>>>>성별 기초통계량<<<<'							TITLE : 제목
+RUN;
+
+
+
+
+
+2. UNIVARIATE 프로시저 : 다양한 단변량 기술통계량 제공, SORT연산을 통해 데이터를 정렬해줘야 한다.
+PROC SORT DATA = mysas.company;
+BY gender;									BY : SORTING할 칼럼명 지정
+RUN;
+
+PROC UNIVARIATE DATA = mysas.company NORMAL PLOTS;
+BY gender;
+VAR age height;
+HISTOGRAM age/NORMAL;
+PROBPLOT height/NORMAL;
+QQPLOT age/EXPONENTIAL;
+RUN; 
+
+PROC BOXPLOT DATA = mysas.company;
+PLOT height*gender / BOXSTYLE = SKELETAL;						y축 컬럼 * x축 컬럼명 플로팅 
+RUN;
+
+
+
+
+
+3. FREQ 프로시저 : 단변량, 다변량 빈도표 + 상호연관성 테이블 제공 
+PROC FREQ DATA = mysas.company;
+TABLES height gender*height;								1개 : 단변량 빈도, 2개 * : 다변량 빈도
+RUN;
+
+PROC FREQ DATA = mysas.company;
+WEIGHT count;									WEGHT : 빈도수가 미리 값으로 지정되어있는 경우.
+TABLE age drink age*drink / NCOL NOPERCENT;
+RUN;
+
+
+
+
+
+4. 프로시저 서브세팅 : 특정조건을 만족하는 데이터셋 분석
+1) WHERE
+PROC MEANS DATA = mysas.company MEAN STD;
+WHERE age > 20;
+CLASS gender;
+VAR height weight;
+RUN; 
+
+2) CONTAINS : 특정 문자열 포함 여부
+PROC PRINT DATA = mysas.company;
+WHERE dept CONTAINS "at";
+RUN;
+
+3)IN : isin()기능 데이터셋 지정 서브세팅 
+WHERE age IN (16,19,21,29) 
+
+
+
+
+
+
+
+
+
+
+
+# 플로팅
+
+1. PLOT 프로시저 
+PROC PLOT DATA = mysas.company;
+PLOT height*age = 'H' wiehgt*age = gender/HPOS=50 VPOS OVERLAY; 			두 변수간 문자 표시/ 변수값 표시(hue) + HPOS, VPOS : 길이
+RUN;
+
+
+
+
+2. CHART 프로시저 : 여러 다양한 PLOT기능
+PROC CHART DATA = mysas.company;
+HBAR height;
+PIE age/DISCRETE; 
+RUN;
+
+PROC CHART DATA = mysas.company;
+HBAR height gender / SUMVAR = age TYPE = MEAN					SUMVAR : TYPE에 따른 x축에 표시되는 칼럼명 지정, 빈도X
+RUN;
+
+OPTIONS LINESIZE=80 PAGESIZE=50 NODATA PAGENO=1;
+PROC PRINT DATA = mysas.company;
+RUN;

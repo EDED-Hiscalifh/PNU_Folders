@@ -1,0 +1,203 @@
+install.packages(c('car','dplyr', 'tidyr', 'ggplot2', 'corrplot', 'GGally', 'scales', 'bnlearn'))
+
+install.packages("BiocManager") 
+BiocManager::install("Rgraphviz")
+
+#[id]: Unique ID for each home sold
+#[date]: Date of the home sale
+#[price]: Price of each home sold
+#[bedrooms]: Number of bedrooms
+#[bathrooms]: Number of bathrooms, where .5 accounts for a room with a toilet but no shower
+#[sqft_living]: Square footage of the apartments interior living space
+#[sqft_lot]: Square footage of the land space
+#[floors]: Number of floors
+#[waterfront]: A dummy variable for whether the apartment was overlooking the waterfront or not
+#[view]: An index from 0 to 4 of how good the view of the property was
+#[condition]: An index from 1 to 5 on the condition of the apartment,
+#[grade]: An index from 1 to 13, where 1-3 falls short of building construction and design, 7 has an average level of construction and design, and 11-13 have a high-quality level of construction and design
+#[sqft_above]: The square footage of the interior housing space that is above ground level
+#[sqft_basement]: The square footage of the interior housing space that is below ground level
+#[yr_built]: The year the house was initially built
+#[yr_renovated]: The year of the house’s last renovation
+#[zipcode]: What zip code area the house is in
+#[lat]: Lattitude
+#[long]: Longitude
+#[sqft_living15]: The square footage of interior housing living space for the nearest 15 neighbors
+#[sqft_lot15]: The square footage of the land lots of the nearest 15 neighbors
+
+# Statistic
+library(car)
+
+# Data manipulation
+library(dplyr)
+library(tidyr)
+
+# Visualization
+library(ggplot2)
+library(corrplot)
+library(GGally)
+library(scales)
+
+# Bayesian network
+library(bnlearn)
+library(Rgraphviz)
+
+# Setting for ggplot theme
+theme_set(theme_minimal() + 
+            theme(plot.title = element_text(face = 'bold', colour = 'grey10'), 
+                  plot.subtitle = element_text(colour = 'grey25'), 
+                  panel.grid.major = element_line(colour = 'grey90', size = 1), 
+                  panel.grid.minor = element_line(colour = 'grey80', size = 0.5, linetype = 'dashed'), 
+                  legend.position = 'top', 
+                  legend.spacing.x = unit(0.125, 'cm'), 
+                  legend.background = element_rect(fill = NULL, linetype = 'dotted'), 
+                  strip.background = element_blank(), 
+                  strip.text = element_text(face = 'bold', colour = 'grey25', size = 11.25)))
+
+data_kc = read.csv('C:/Users/YunHwan/Downloads/kc_house_data.csv/kc_house_data.csv')
+
+str(data_kc)
+summary(data_kc)
+
+
+df_kc = data_kc %>% 
+  select(-id, -date, -zipcode, -lat, -long)
+df_kc$age = 2015 - df_kc$yr_built + 1
+df_kc = df_kc %>% 
+  select(-yr_built)
+df_kc = df_kc %>% 
+  mutate(yr_renovated = if_else(yr_renovated == 0, 'No Renovation', 
+                                if_else(yr_renovated < 1980, 'Under 1980', 
+                                        if_else(yr_renovated < 2000, '1980 - 2000', '2000 - 2015'))))
+df_kc$yr_renovated = as.factor(df_kc$yr_renovated)
+df_kc$sqft_above_ratio = with(df_kc, sqft_above/sqft_living)
+df_kc = df_kc %>% 
+  select(-sqft_above, -sqft_basement)
+df_kc$waterfront = as.factor(df_kc$waterfront)
+df_kc[, sapply(df_kc, function(x) is.integer(x))] = lapply(df_kc[, sapply(df_kc, function(x) is.integer(x))], as.double)
+
+
+df_temp = df_kc %>% 
+  select(-yr_renovated, -waterfront)
+
+df_temp %>% 
+  gather(key = key, value = value, bedrooms:view) %>% 
+  ggplot(aes(value, price)) + 
+  geom_bin2d() + 
+  scale_x_continuous(label = comma) + 
+  scale_fill_gradient(trans = 'log') + 
+  guides(fill = F) + 
+  facet_wrap(~key, scales = 'free', ncol = 2) + 
+  labs(x = NULL)
+
+df_temp %>% 
+  gather(key = key, value = value, condition:sqft_above_ratio) %>% 
+  ggplot(aes(value, price)) + 
+  geom_bin2d() + 
+  scale_x_continuous(label = comma) + 
+  scale_fill_gradient(trans = 'log') + 
+  guides(fill = F) + 
+  facet_wrap(~key, scales = 'free', ncol = 2) + 
+  labs(x = NULL)
+
+df_temp = df_kc %>% 
+  mutate(waterfront = if_else(waterfront == '1', 'TRUE', 'FALSE')) %>% 
+  select(price, waterfront, yr_renovated)
+
+df_temp %>% 
+  gather(key = key, value = value, waterfront, yr_renovated) %>% 
+  mutate(value = factor(value, levels = c('Under 1980', '1980 - 2000', '2000 - 2015', 'No Renovation', 'TRUE', 'FALSE'))) %>% 
+  ggplot(aes(value, price, colour = value)) + 
+  geom_boxplot(size = 1) + 
+  scale_y_log10() + 
+  facet_wrap(~ key, scale = 'free', ncol = 2) + 
+  guides(colour = F)
+
+cor.mtest <- function(mat, conf.level = 0.95) {
+  mat <- as.matrix(mat)
+  n <- ncol(mat)
+  p.mat <- lowCI.mat <- uppCI.mat <- matrix(NA, n, n)
+  diag(p.mat) <- 0
+  diag(lowCI.mat) <- diag(uppCI.mat) <- 1
+  
+  for (i in 1:(n - 1)) {
+    for (j in (i + 1):n) {
+      tmp <- cor.test(mat[, i], mat[, j], conf.level = conf.level)
+      p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
+      lowCI.mat[i, j] <- lowCI.mat[j, i] <- tmp$conf.int[1]
+      uppCI.mat[i, j] <- uppCI.mat[j, i] <- tmp$conf.int[2]
+    }
+  }
+  
+  return(list(p.mat, lowCI.mat, uppCI.mat))
+}
+
+res <- cor.mtest(df_kc %>% 
+                   select(-waterfront, -yr_renovated), 0.95)
+colnames(res[[1]]) <- names(df_kc %>% select(-waterfront, -yr_renovated))
+rownames(res[[1]]) <- names(df_kc %>% select(-waterfront, -yr_renovated))
+
+corrplot(df_kc %>% 
+           select(-waterfront, -yr_renovated) %>% 
+           cor(method = 'spearman'), p.mat = res[[1]], sig.level = 0.05, method = 'number', type = 'lower')
+
+model_lm = lm(log(price) ~ ., df_kc)
+summary(model_lm)
+
+plot(model_lm, 2)
+vif(model_lm)
+
+df_input = df_kc %>% 
+  mutate(log_price = log(price)) %>% 
+  select(-price)
+model_bn_prototype = hc(df_input, score = 'bic-cg')
+model_bn_prototype
+
+plot_bn = layoutGraph(as.graphNEL(model_bn_prototype))
+nodeRenderInfo(plot_bn) <- list(fontsize = 150)
+renderGraph(plot_bn)
+
+top_node = c('floors', 'bedrooms', 'bathrooms', 'sqft_living', 'sqft_lot', 
+            'sqft_above_ratio', 'sqft_living15', 'sqft_lot15', 'waterfront', 'view', 
+            'age')
+df_wl = data.frame(from = c('bedrooms', 'bathrooms', 'sqft_living', 'waterfront', 'view', 'condition', 'grade', 'yr_renovated'), to = 'log_price')
+df_bl = NULL
+
+for (i in top_node) {
+  df_bl = df_bl %>% 
+    bind_rows(data.frame(from = top_node[top_node != i], to = i))
+}
+
+df_bl = df_bl %>% 
+  bind_rows(data.frame(from = 'log_price', to = names(df_kc)[names(df_kc) != 'price']))
+df_bl = df_bl %>% 
+  bind_rows(data.frame(from = 'condition', to = top_node))
+df_bl = df_bl %>% 
+  bind_rows(data.frame(from = 'grade', to = top_node))
+df_bl = df_bl %>%
+  bind_rows(data.frame(from = 'yr_renovated', to = top_node))
+model_bn = hc(df_input, blacklist = df_bl, whitelist = df_wl, score = 'bic-cg')
+plot_bn = layoutGraph(as.graphNEL(model_bn))
+nodeRenderInfo(plot_bn) <- list(fontsize = 50)
+renderGraph(plot_bn)
+
+fit_bn = bn.fit(model_bn, df_input)
+fit_bn
+
+
+pred_output = predict(model_lm, df_kc)
+rmse_lm = sum(abs(pred_output - log(df_kc$price))^2)/nrow(df_kc)
+df_lm = data.frame(log_price = log(df_kc$price), pred_log_price = pred_output, model = 'Multiple Linear Regression')
+pred_output = predict(fit_bn, node = 'log_price', data = df_input)
+rmse_bn = sum(abs(pred_output - df_input$log_price)^2)/nrow(df_input)
+df_bn = data.frame(log_price = df_input$log_price, pred_log_price = pred_output, model = 'Bayeisan Network')
+df_total = df_lm %>% 
+  bind_rows(df_bn)
+print(rmse_lm)
+print(rmse_bn)
+df_total %>% 
+  ggplot(aes(log_price, pred_log_price, colour = model)) + 
+  geom_point(alpha = 0.05) + 
+  geom_abline(slope = 1, intercept = 0, linetype = 'dashed', size = 0.75) + 
+  guides(colour = F) + 
+  facet_wrap(~ model)

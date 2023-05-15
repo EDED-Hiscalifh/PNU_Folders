@@ -1,0 +1,66 @@
+data(Titanic)
+titanic.df <- as.data.frame(Titanic)
+head(titanic.df)
+summary(titanic.df)
+
+titanic <- NULL
+for(i in 1:4) { titanic <- cbind(titanic,
+			rep(as.character(titan.df[,i]), titan.df$Freq)) }
+titanic <- as.data.frame(titanic)
+names(titanic) <- names(titanic.df)[1:4]
+titanic
+
+
+
+## 연관규칙 분석: apriori 알고리즘으로 연관 규칙 찾기
+# apriori{arules} 함수 이용
+install.packages('arules')
+library(arules)
+# 모든 규칙 생성
+rules.all <- apriori(titanic)
+options(digits=3)
+inspect(rules.all)
+
+# 규칙의 우변(rhs)가 생존 여부(Survived)와 관계된 규칙
+# 설정값 변경: 최소부분집합크기=2, 최소지지도=0.005, 최소신뢰도=0.8
+rules <- apriori(titanic, control = list(verbose=F),
+			parameter = list(minlen=2, supp=0.005, conf=0.8),
+			appearance = list(rhs=c("Survived=No", "Survived=Yes"),
+			default="lhs"))
+# 향상도(lift) 기준으로 정렬
+rules.sorted <- sort(rules, by="lift")
+# 규칙 확인
+inspect(rules.sorted)
+
+# 중복되는 규칙 찾기
+subset.matrix <- is.subset(rules.sorted, rules.sorted)
+subset.matrix[lower.tri(subset.matrix, diag=T)] <- F
+redundant <- colSums(subset.matrix, na.rm = T) >= 1
+which(redundant)
+
+# 중복되는 규칙 삭제
+rules.pruned <- rules.sorted[!redundant]
+
+## 연관규칙 시각화
+install.packages('arulesViz')
+library(arulesViz)
+plot(rules.all) # 디폴트 옵션: measure=c("support", "confidence"), shading="lift"
+plot(rules.all, shading="order")
+
+plot(rules.sorted) # 12개 규칙
+plot(rules.sorted, method="grouped")
+
+plot(rules.sorted, method="graph")
+# 10개 item(10=4+2+2+2)
+
+# 평행좌표그림
+plot(rules.sorted, method="paracoord", control=list(reorder=TRUE))
+
+
+## 대화식(interactive) 그림
+# 선택된 규칙을 조사(inspect), 줌인(줌아웃), 규칙 필터링(color key에서 절단값 클릭)
+plot(rules.sorted, measure=c("support", "lift"), shading="confidence", interactive=TRUE) 
+
+## 행렬-기반 시각화
+plot(rules.sorted, method="matrix", measure="lift")
+plot(rules.sorted, method="matrix3D", measure="lift")

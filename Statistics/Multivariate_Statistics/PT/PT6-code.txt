@@ -1,0 +1,211 @@
+## Practice Time 6 for CA
+### Types of Distance (p.40)
+Data1.1.1<-read.table("3subjects.txt", header=T)
+head(Data1.1.1)
+dim(Data1.1.1)
+X<-as.matrix(Data1.1.1)
+
+# xbar<-colMeans(X)
+S<-cov(X)
+# scale(X, scale=F) # 중심화자료행렬
+Z<-scale(X, scale=T) # 표준화자료행렬
+
+# 유클리드거리 sqrt ((x1-x2)^2 + (y1-y2)^2) 
+de <- as.matrix(dist(X, method="euclidean"))
+de <- as.dist(de)
+round(de, 3)
+
+# 표준화 유클리드거리 
+ds <- as.matrix(dist(Z, method="euclidean"))
+ds <- as.dist(ds) 
+round(ds, 3)
+
+# 마할라노비스거리
+library(biotools)
+dm <- D2.dist(X,S)
+round(sqrt(dm),3)
+
+############# Hierarchical CA #############
+#### economicview data (p.251)
+Data1.3.5<-read.table("economicview.txt", header=T)
+head(Data1.3.5)
+X<-Data1.3.5[,-1]
+gov<-Data1.3.5[,1]
+rownames(X)<-gov
+X
+
+# 유클리드거리
+de<-dist(X, method="euclidean")
+round(de, 3)
+win.graph()
+ward=hclust(de, method="ward.D")
+#ward=hclust(de, method="ward.D2")
+plot(ward, labels=gov, main="(a) Ward Linkage : Euclidean Distance")
+
+# Generate Z for Standardized Euclidean Distance
+Z <- scale(X, scale=T)
+
+# 표준화 유클리드거리
+ds <- dist(Z, method="euclidean")
+round(ds, 3)
+win.graph()
+wards=hclust(ds, method="ward.D")
+plot(wards, labels=gov,  main="(b) Ward Linkage : Standardized Euclidean Distance")
+
+# 마할라노비스거리
+library(biotools)
+dm<-D2.dist(X, S)
+round(sqrt(dm), 3)
+win.graph()
+wardm=hclust(dm, method="ward.D")
+plot(wardm, labels=gov, main="(c) Ward Linkage : Mahalanobis Distance")
+
+
+#### KLPGA Data (255p)
+# AMCA : AM Linkages
+Data1.3.2<-read.table("klpga.txt", header=T)
+head(Data1.3.2)
+X<- Data1.3.2
+
+Z <- scale(X, scale=T)
+
+# 표준화 유클리드거리
+ds <- dist(Z, method="euclidean")
+round(ds, 3)
+
+#단일연결법
+single=hclust(ds, method="single")
+plot(single, hang=-1, main="(a) Single Linkage")
+#완전연결법
+complete=hclust(ds, method="complete")
+plot(complete,hang=-1, main="(b) Complete Linkage")
+#평균연결법
+average=hclust(ds, method="average")
+plot(average, hang=-1, main="(c) Average Linkage")
+#와드연결법
+ward=hclust(ds, method="ward.D")
+plot(ward, hang=-1, main="(d) Ward Linkage")
+
+
+#### utility data
+# AMCA : Ward Linkage for US Public Utilities
+Data5.3.1<-read.table("utility.txt", header=T)
+head(Data5.3.1)
+X<-Data5.3.1[,-1]
+rownames(X)<-Data5.3.1[,1] vg                                                                                                                                                                                                                                              
+X
+
+Z <- scale(X, scale=T)
+
+# 표준화 유클리드거리
+ds <- dist(Z, method="euclidean")
+round(ds, 3)
+
+#와드연결법
+ward=hclust(ds, method="ward.D")
+plot(ward, labels=rownames(X), hang=-1,  main=" Ward Linkage : Standardized Euclidean Distance")
+
+
+############# Non-Hierarchical CA #############
+### utility data
+# K-Means CA for Public Utilities (p.269)
+Data5.3.1<-read.table("utility.txt", header=T)
+X<-Data5.3.1[,-1]
+Z<-scale(X, scale=T)
+company=Data5.3.1[,1]
+
+# K-means Method
+kmeans <- kmeans(Z, 4) # 4 cluster solution
+cluster=data.frame(company,cluster=kmeans$cluster)
+C1=cluster[(cluster[,2]==1),]
+C2=cluster[(cluster[,2]==2),]
+C3=cluster[(cluster[,2]==3),]
+C4=cluster[(cluster[,2]==4),]
+C1;C2;C3;C4
+
+# Get cluster means 
+aggregate(X, by=list(kmeans$cluster),FUN=mean)
+
+# K-medoids Method
+library(cluster)
+kmedoids <- pam(Z, 4, metric="euclidean")
+cluster <- data.frame(company, cluster=kmedoids$cluster)
+C1=cluster[(cluster[,2]==1),]
+C2=cluster[(cluster[,2]==2),]
+C3=cluster[(cluster[,2]==3),]
+C4=cluster[(cluster[,2]==4),]
+C1;C2;C3;C4
+
+# Get cluster means 
+aggregate(X, by=list(kmedoids$cluster),FUN=mean)
+
+### economicview data (p.273)
+# K-Means CA for Economic Views
+Data1.3.5<-read.table("economicview.txt", header=T)
+X<-Data1.3.5[,-1]
+Z<-scale(X, scale=T)
+기관=Data1.3.5[,1]
+
+# 표준화 유클리드거리
+ds <- dist(Z, method="euclidean")
+round(ds, 3)
+
+# K-means Method
+kmeans <- kmeans(Z, 4) # 4 cluster solution
+cluster=data.frame(기관,cluster=kmeans$cluster)
+C1=cluster[(cluster[,2]==1),]
+C2=cluster[(cluster[,2]==2),]
+C3=cluster[(cluster[,2]==3),]
+C4=cluster[(cluster[,2]==4),]
+C1;C2;C3;C4
+
+# Get cluster means 
+aggregate(X, by=list(kmeans$cluster),FUN=mean)
+
+####### # of cluster #########
+### utility data
+
+# Index for the Number of Clusters in K-Means CA: Public Utilities (p.277)
+# install.packages("NbClust")
+library(NbClust)
+Data5.3.1<-read.table("utility.txt", header=T)
+X<-Data5.3.1[,-1]
+Z<-scale(X, scale=T)
+company=Data5.3.1[,1]
+
+#CCC Index
+ccc<-NbClust(Z, distance="euclidean", min.nc = 2, max.nc = 8, method = "kmeans", index = "ccc")
+ccc
+plot(2:8, type="b", ccc$All.index, xlab="Number of Clusters", ylab="CCC")
+
+#Dindex Index
+dindex<-NbClust(Z, distance="euclidean", min.nc = 2, max.nc = 8, method = "kmeans", index = "dindex")
+dindex
+
+#All Indices
+allindex<-NbClust(Z, distance="euclidean", min.nc = 2, max.nc = 8, method = "kmeans", index = "all")
+allindex
+
+#Another Method
+#method = "ward.D"(ward.D2), "single", "complete", "average", "kmeans" 등 사용 가능
+allindex<-NbClust(Z, distance="euclidean", min.nc = 2, max.nc = 8, method = "ward.D", index = "all")
+allindex
+
+######
+# 이런 코드들이 보이면 다 쓰지 말고 아래의 scale()을 사용한는 것이 좋음.
+# 위의 과정은 다 표준화자료행렬 Z를 이끌어내기 위한 작업이기 때문
+
+n<-nrow(X)
+xbar<-t(X)%*%matrix(1,n,1)/n # 평균벡터
+I<-diag(n)
+J<-matrix(1,n,n)
+H<-I-1/n*J                  # 중심화행렬
+Y<-H%*%X                 # 중심화 자료행렬
+S<-t(Y)%*%Y/(n-1)          # 공분산행렬 
+D<-diag(1/sqrt(diag(S)))     # 표준편차행렬의 역수 (1/s_ii)
+Z<-Y%*%D                # 표준화자료행렬
+colnames(Z)<-colnames(X)
+rownames(Z)<-rownames(X)
+
+Z <- scale(X, scale=T)
+xbar <- colMeans(X)

@@ -1,0 +1,49 @@
+S1=matrix(c(80,44,44,80), byrow=T, nrow=2)
+
+S2=matrix(c(8000,440,440,80), byrow=T, nrow=2)
+
+
+#[Step 2] Covariance Matrix S(or Correlation Matix R)
+S=S2
+S
+
+#[Step 3] Spectrla Decompositoin 
+eigen.S=eigen(S)
+round(eigen.S$values, 3) # Eigenvalus
+V=round(eigen.S$vectors, 3) # Eigenvaectors
+V
+#[Step 4] Choice of Eigenvalues and Eigenvectors
+gof=eigen.S$values/sum(eigen.S$values)*100 # Goodness-of fit
+round(gof, 2)
+
+#[Step 5] PCs : liner combination of original variables 
+V2=V[,1:2]
+V2
+
+BVNpdf <- function(mu1,mu2,sig1,sig2,rho) {
+par(mfrow=c(1,2))
+s12 = sig1*sig2*rho
+s11 = sig1^2
+s22 = sig2^2
+Sig <- matrix(c(s11,s12,s12,s22),ncol=2,nrow=2,byrow=T)
+Sinv <- solve(Sig)
+x1 <- seq(-5, 5,len=50)
+fx1 <- seq(-5,5,len=50)
+x2 <- seq(-5,5,len=50)
+fx2 <- seq(-5,5,len=50)
+f <- function(x1,x2) {    
+                cons <- ((2*pi)*det(Sig)^.5)^{-1}
+                cons*exp(-(.5*(1 - rho^2)^{-1})*(x1^2+x2^2-2*rho*x1*x2))
+        }
+f <- outer(fx1,fx2,f)
+persp(x1,x2,f,theta = 30, expand=.50)
+title(main="Bivariate Normal pdf")
+contour(x1,x2,f,lty="solid",drawlabels=F)
+title(main="Contour Plot of BVN pdf", xlab="x1", ylab="x2")
+abline(v=0, h=0)
+BVNpdf(mu1,mu2,sig1,sig2,rho)
+par(mfrow=c(1,1))
+}
+
+BVNpdf(0,0,sqrt(80),sqrt(80),0.55)
+BVNpdf(0,0,sqrt(8000),sqrt(80),0.55)

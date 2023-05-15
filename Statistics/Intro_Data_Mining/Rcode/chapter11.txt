@@ -1,0 +1,120 @@
+lpga<-read.csv('F:/데이터마이닝/판별분석/lpga2008.csv', fileEncoding = 'utf-8')
+lpga$상금그룹[rank(-lpga$상금)<=40]<-'상'
+lpga$상금그룹[rank(-lpga$상금)>40]<-'하'
+
+install.packages('car')
+library(car)
+scatterplotMatrix(~평균_비거리+페어웨이_안착율+그린_적중률+평균_퍼팅수+샌드_회수+샌드_세이브|상금그룹,data=lpga,col=c(3,4))
+
+install.packages('heplots')
+library(heplots)
+boxM(lpga[,2:7],lpga$상금그룹)
+
+library(MASS)
+lpga.lda<-lda(상금그룹~평균_비거리+페어웨이_안착율+그린_적중률+평균_퍼팅수+샌드_회수+샌드_세이브,data=lpga) #판별규칙
+lpga.lda #판별규칙 결과 출력
+lpga.lda.p<-predict(lpga.lda) #사후확률(posterior), 판별값(x)
+head(lpga.lda.p$posterior)
+
+lpga.lda<-lda(상금그룹~평균_비거리+페어웨이_안착율+그린_적중률+평균_퍼팅수+샌드_회수+샌드_세이브,data=lpga, prior=c(0.2,0.8))
+
+library(MASS)
+lpga.lda<-lda(상금그룹~평균_비거리+페어웨이_안착율+그린_적중률+평균_퍼팅수+샌드_회수+샌드_세이브,data=lpga)
+lpga.lda #판별규칙 결과 출력
+
+lpga.lda.p<-predict(lpga.lda) #사후확률(posterior), 판별값(x)
+head(lpga.lda.p$posterior)
+lpga.lda.p$class
+head(lpga.lda.p$x)
+
+lpga.lda.ct<-table(lpga$상금그룹,lpga.lda.p$class)
+prop.table(lpga.lda.ct,1) #행 퍼센트,분류표
+sum(diag(prop.table(lpga.lda.ct))) #정분류
+
+install.packages('klaR')
+library(klaR)
+partimat(as.factor(상금그룹)~평균_비거리+페어웨이_안착율+그린_적중률+평균_퍼팅수
+         +샌드_회수+샌드_세이브,data=lpga,method='lda')
+
+lpga.lda.result<-cbind(lpga,lpga.lda.p$class)
+lpga.lda.result$분류결과[lpga.lda.result[,10]==lpga.lda.result[,11] &
+                       lpga.lda.result[,10]=='상']<-'OO'
+lpga.lda.result$분류결과[lpga.lda.result[,10]==lpga.lda.result[,11] &
+                       lpga.lda.result[,10]=='하']<-'XX'
+lpga.lda.result$분류결과[lpga.lda.result[,10]!=lpga.lda.result[,11] &
+                       lpga.lda.result[,10]=='상']<-'OX'
+lpga.lda.result$분류결과[lpga.lda.result[,10]!=lpga.lda.result[,11] &
+                       lpga.lda.result[,10]=='하']<-'XO'
+head(lpga.lda.result)
+
+scatterplotMatrix(~평균_비거리+페어웨이_안착율+그린_적중률+평균_퍼팅수+샌드_회수+샌드_세이브|분류결과,data=lpga.lda.result,col=c(1:4))
+
+
+install.packages('GGally')
+library(GGally)
+theme_update(text=element_text(family="AppleGothic"))
+ggpairs(lpga.lda.result[,2:7],aes(colour=lpga.lda.result$분류결과,alpha=0.4),upper=list(continuous='smooth'))
+
+install.packages('doBy')
+library(doBy)
+summaryBy(평균_비거리+페어웨이_안착율+그린_적중률+평균_퍼팅수+샌드_회수+샌드_세이브~분류결과, data=lpga.lda.result,FUN=c(mean,sd),na.rm=TRUE)
+
+boxplot(평균_비거리~분류결과,data=lpga.lda.result,notch=TRUE,col='blue',main="비거리 상자그림", xlab="판별그룹")
+
+predict(lpga.lda,newdata=data.frame(평균_비거리=260,페어웨이_안착율=70,그린_적중률=65,평균_퍼팅수=28,샌드_회수=1.5,샌드_세이브=40))$posterior
+
+#################################################################
+library(MASS)
+lpga.qda<-qda(상금그룹~평균_비거리+페어웨이_안착율+그린_적중률+평균_퍼팅수+샌드_회수+샌드_세이브,data=lpga)
+lpga.qda.p<-predict(lpga.qda) #사후확률(posterior), 판별값(x)
+
+lpga.qda.ct<-table(lpga$상금그룹,lpga.qda.p$class)
+lpga.qda.ct
+prop.table(lpga.qda.ct,1) #행 퍼센트,분류표
+sum(diag(prop.table(lpga.qda.ct))) #정분류
+
+library(klaR)
+partimat(as.factor(상금그룹)~평균_비거리+페어웨이_안착율+그린_적중률+평균_퍼팅수
+         +샌드_회수+샌드_세이브,data=lpga,method='qda')
+
+lpga.qda.result<-cbind(lpga,lpga.qda.p$class)
+lpga.qda.result$분류결과[lpga.qda.result[,10]==lpga.qda.result[,11] &
+                       lpga.qda.result[,10]=='상']<-'OO'
+lpga.qda.result$분류결과[lpga.qda.result[,10]==lpga.qda.result[,11] &
+                       lpga.qda.result[,10]=='하']<-'XX'
+lpga.qda.result$분류결과[lpga.qda.result[,10]!=lpga.qda.result[,11] &
+                       lpga.qda.result[,10]=='상']<-'OX'
+lpga.qda.result$분류결과[lpga.qda.result[,10]!=lpga.qda.result[,11] &
+                       lpga.qda.result[,10]=='하']<-'XO'
+table(lpga.qda.result[,12])
+
+predict(lpga.qda,newdata=data.frame(평균_비거리=260,페어웨이_안착율=70,그린_적중률=65,평균_퍼팅수=28,샌드_회수=1.5,샌드_세이브=40))$posterior
+
+##################################################################
+table(iris$Species)
+
+library(heplots)
+boxM(iris[,1:4],iris$Species)
+
+library(MASS)
+iris.qda<-qda(iris$Species~Sepal.Length+Sepal.Width+Petal.Length+Petal.Width, data=iris)
+iris.qda.p<-predict(iris.qda) #사후확률($posterior), 판별결과($class)
+
+iris.qda.ct<-table(iris$Species,iris.qda.p$class)
+iris.qda.ct
+prop.table(iris.qda.ct,1) #행 퍼센트,분류표
+sum(diag(prop.table(iris.qda.ct))) #정분류
+
+
+library(klaR)
+partimat(iris$Species~Sepal.Length+Sepal.Width+Petal.Length+Petal.Width,data=iris,method='qda')
+
+library(doBy)
+
+iris.qda.result<-cbind(iris,iris.qda.p$class)
+summaryBy(Sepal.Length+Sepal.Width+Petal.Length+Petal.Width~iris.qda.p$class,data=iris.qda.result,FUN=c(mean,sd),na.rm=TRUE)
+
+names(iris.qda.result)
+boxplot(Sepal.Length~iris.qda.p$class,data=iris.qda.result,notch=TRUE,col='blue',main="Sepal Length by Classification", xlab="Class Result")
+
+predict(iris.qda,newdata=data.frame(Sepal.Length=45,Sepal.Width=30,Petal.Length=30,Petal.Width=15))$posterior

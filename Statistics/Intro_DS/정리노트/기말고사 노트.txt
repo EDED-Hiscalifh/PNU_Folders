@@ -1,0 +1,120 @@
+1. 필수 라이브러리 
+
+library(tidyverse)
+library(dplyr)
+library(dslabs)
+library(ggplot2)
+library(ggthemes)
+
+==============================================================================================================
+
+2. ggplot2 예제 
+
+r <- murders %>%
+  summarize(rate = sum(total)/sum(population)*10^6) %>%
+  pull(rate)
+
+murders %>% 
+  ggplot(aes(x = population/10^6, y = total, label = abb, color = region), size = 3) + 
+  geom_point() + 
+  geom_abline(intercept = log10(r), lty = 2, color = 'grey') + 
+  geom_text(nudge_x = 0.1) + 
+  scale_x_continuous(trans = "log10", "Population in logscale") + 
+  scale_y_continuous(trans = "log10", "Total in logscale") + 
+  ggtitle("US Gun Murders in 2010") + 
+  theme_economist()
+
+==============================================================================================================
+
+3. Visualization by data
+
+1) Categorical 
+	- Frequency table 		: group_by() + count() + ungroup() 
+	- Barplot			: geom_bar()
+
+2) Numerical 
+	- CDF 			: 특정조건을 만족하는 퍼센테이지의 계산은 data[condition]을 뽑은 후 mean(최종 condition)으로 계산한다. 
+	- Historgram 		: geom_histogram()
+	- Smoothed density 		: geom_density()
+	- QQplot 			: stat_qq() + stat_qq_line()
+	- Boxplot			: geom_boxplot()
+
+==============================================================================================================
+
+4. Data visualization in practice
+
+1) Scatterplot with facet_grid
+
+facet_grid(x~y or .~y) | facet_wrap(~y, scale = free)
+
+2) Time-Series
+
+ggplot() + geom_line() 
+
+3) Visualization Point
+
+	# !is.na()
+	gapminder %>% filter(condition & !is.na(column)) %>% ggplot(aes(x, y, fill or color = ) 
+
+	# reorder()
+	gapminder %>% filter(condition & !is.na(column)) %>% mutate(col = reorder(col, by, function = )) %>% ggplot() + geom_plot() + facet_grid(.~y)
+
+	# factor()
+	gapminder <- gapminder %>%
+  	     mutate(group = factor(group, levels = c("Others", "Latin America", "East Asia", "Sub-Saharan", "West")))
+
+	# intersect()
+	country_list_1 <- gapminder %>% filter(year == past_year & !is.na(dollars_per_day)) %>% pull(country)
+	country_list_2 <- gapminder %>% filter(year == present_year & !is.na(dollars_per_day)) %>% pull(country)
+	country_list <- intersect(country_list_1, country_list_2)
+
+	# year factor
+	mutate(year = factor(year)) %>%
+	
+	# x축 각도수정 
+	theme(axis.text.x = element_text(angle = 90, hjust = 1), legend.position = "none") +
+
+4) 최종 코드 
+
+gapminder %>%
+	filter(condition1 & condition2 & !is.na(gdp)) %>% 
+	mutate(dollars_per_day = gdp/population/365) %>%
+	mutate(region = reorder(region, dollars_per_day, FUN = median, na.rm =T )) %>% 		or mutate(year = factor(year))  = [na.rm = T]필수로 할것 
+	ggplot(aes(region, dollars_per_day, fill = year)) + 					[color는 색깔, fill은 구분]
+	geom_box() + 
+	facet_wrap(~year) + 								[연도에 따른 그래프 faceting]
+	theme(axis.text.x = element_text(angle = 90, hjust = 1), legend.position = "none") +	[x축 변수 각도]
+	scale_x_continuous(" ") + 
+	scale_y_continuous(" ") + 
+	ggtitle(" ") +
+	coord_flip()								[x, y축 변경]
+	
+
+================================================================================================================
+
+5. Outlier
+
+q1 = quantile(data, 0.25) - 1.5*IQR(data)
+q3 = quantile(data, 0.75) + 1.5*IQR(data)
+
+data <- data[between(data, q1, q3)] 
+
+6. Factor 
+
+1) ggplot(aes(x = factor(year)) or fill = factor(year)) 
+2) mutate(col = reorder(col, app_col, FUN)) 
+3) levels(factor(data$col)) %>% levels(data$col)[n] <- "Change value" 
+
+7. Reshaping data
+1) pivot_longer(columns, names_to = , values_to = )		: Messy한 컬럼을 한 column으로 내리고, value를 따로 col을 지정한다. 
+2) pivot_wider(names_from = , values_from = )		: Messy한 value를 여러 columns으로 지정한다. 
+3) unite(new_col, col1, col2) 				: col들의 value를 합친다 
+4) separate(column, into, extra = 'option') %>% pivot_wider()  : col들의 value를 나눈다. 
+
+8) Joining table
+1) left_join(a, b, by = ) 
+2) right_join(a, b, by = )
+3) inner_join(a, b, by = )
+4) full_join(a, b, by = )
+
+** union, setdiff, intersect -> dplyr::union으로 사용한다. 

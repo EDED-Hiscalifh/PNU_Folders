@@ -1,0 +1,78 @@
+install.packages('caret')
+library(caret)
+data(mdrr) # 다중약물내성 자료(528개 관측치, 342개 변수)
+data.frame(table(mdrrDescr$nR11))
+
+nzv <- nearZeroVar(mdrrDescr, saveMetrics = TRUE)
+str(nzv); nzv[nzv$nzv, ][1:10,]
+
+dim(mdrrDescr)
+nzv <- nearZeroVar(mdrrDescr)
+nzv
+filteredDescr <- mdrrDescr[, -nzv]
+dim(filteredDescr)
+
+descrCor <- cor(filteredDescr)
+(highCorr <- sum(abs(descrCor[upper.tri(descrCor)]) > .999))
+summary(descrCor[upper.tri(descrCor)])
+
+highlyCorDescr <- findCorrelation(descrCor, cutoff = 0.75)
+filteredDescr <- filteredDescr[, -highlyCorDescr]
+descrCor2 <- cor(filteredDescr)
+summary(descrCor2[upper.tri(descrCor2)])
+
+
+set.seed(200)
+inTrain <- sample(seq(along = mdrrClass), length(mdrrClass)/2)
+training <- filteredDescr[inTrain, ]
+test <- filteredDescr[-inTrain, ]
+trainMDRR <- mdrrClass[inTrain]
+testMDRR <- mdrrClass[-inTrain]
+
+preProcValues <- preProcess(training, method = c("center","scale"))
+trainTransformed <- predict(preProcValues, training)
+testTransformed <- predict(preProcValues, test)
+
+preProcValues2 <- preProcess(training, method = "BoxCox")
+trainBC <- predict(preProcValues2, training)
+testBC <- predict(preProcValues2, test)
+preProcValues2
+
+install.packages('earth')
+library(earth)
+data(etitanic)
+str(etitanic)
+
+head(model.matrix(survived ~ ., data = etitanic))
+
+dummy.1 <- dummyVars(survived ~ ., data = etitanic)
+head(predict(dummy.1, newdata = etitanic))
+
+
+ltfrDesign <- matrix(0, nrow = 6, ncol = 6)
+ltfrDesign[, 1] <- c(1, 1, 1, 1, 1, 1)
+ltfrDesign[, 2] <- c(1, 1, 1, 0, 0, 0)
+ltfrDesign[, 3] <- c(0, 0, 0, 1, 1, 1)
+ltfrDesign[, 4] <- c(1, 0, 0, 1, 0, 0)
+ltfrDesign[, 5] <- c(0, 1, 0, 0, 1, 0)
+ltfrDesign[, 6] <- c(0, 0, 1, 0, 0, 1)
+comboInfo <- findLinearCombos(ltfrDesign)
+comboInfo
+ltfrDesign[, -comboInfo$remove]
+
+
+library(caret)
+data(airquality); summary(airquality) 
+imp.1 <- preProcess(airquality, method=c("knnImpute"))
+#install.packages('RANN')
+library(RANN)
+imp.2 <- predict(imp.1, airquality); summary(airquality)
+
+trainSet <- sample(1:150, 100)
+distData <- classDist(iris[trainSet, 1:4], iris$Species[trainSet])
+distData$values
+
+newDist <- predict(distData, iris[-trainSet, 1:4])
+newDist
+
+splom(newDist, groups = iris$Species[-trainSet], auto.key=list(columns=3))

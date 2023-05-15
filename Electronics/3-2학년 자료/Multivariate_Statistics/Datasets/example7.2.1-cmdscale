@@ -1,0 +1,17 @@
+#[º¸±â 7.2.1] Metric MDS based ont the Torgerson's Algorithm
+#Clark distance from data matrix
+X <- matrix(c(6,4,4,8,4,2,2,2),byrow=T, nrow=4)
+	n <- nrow(X)
+rownames(X) <- c("a","b","c","d")
+de <- as.matrix(dist(X, method="euclidean"))
+D <- de
+
+# Metric MDS
+con<-cmdscale(D, k=2, eig=T)
+con
+x<-con$points[,1]
+y<-con$points[,2]
+lim<-c(-max(abs(con$points)), max(abs(con$points)))
+plot(x,y, xlab="Dim1", ylab="Dim2", xlim=lim, ylim=lim)
+text(x,y+0.6, rownames(X), cex=0.8)
+abline(v=0, h=0)

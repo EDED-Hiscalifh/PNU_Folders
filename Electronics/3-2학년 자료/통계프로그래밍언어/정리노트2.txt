@@ -1,0 +1,438 @@
+중간고사) 
+
+1. 외부 테스트 파일 읽어오기 
+
+LIBNAME mysas “/folders/myfolders/library”;
+DATA mysas.데이터셋이름;
+INFLE “경로”;
+INPUT 칼럼명 규칙;
+RUN; 
+
+2. 프로그램 내 데이터 입력 
+
+LIBNAME mysas “/folders/myfolders/library”;
+DATA mysas.데이터셋이름;
+INPUT 칼럼명 규칙;
+CARDS;
+데이터 입력 
+RUN; 
+
+
+
+
+기말고사)
+
+1. 데이터 분석(검정) 
+
+귀무가설 : 설정한 가설이 진실할 확률이 극히 적어 처음부터 버릴 것이 예상되는 가정 
+대립가설 : 연구자가 연구를 통해 입증되기를 기대하는 예상이나 주장하는 내용
+유의수준(alpha) : 제 1종 오류를 범할 상한치(기각역의 판단치가 됨) 
+P-value(유의확률) : 귀무가설이 진실일때 적어도 그정도의 극단적인 표본값이 나올 확률, 귀무가설이 참임에도 이를 기각할 확률
+
+- 유의확률 < 유의수준 : 귀무가설을 기각한다, 대립가설을 지지한다( 그래프에서 귀무가설이 거짓일 떄의 분포에 존재한다.) 
+
+------------------------------------------------------------------------------------------
+
+1) T검정 : 모집단의 분포를 모를 경우에 표준오차(s) 이용				
+
+DATA one;
+INPUT CS @@;
+CARDS;
+75 63 49 86 53 80 72 81 80 69 76 85 95 66 77 77 63 58 74 68 90 82 59 60
+;
+RUN;
+
+PROC TTEST DATA=one H0=70;						# P-value : Pr > |t|   
+VAR CS; 									# 분석의 주체가 되는 데이터 
+RUN; 
+
+PROC UNIVARIATE DATA=one Mu0=70 ALPHA=0.0 5 CIBASIC;			# 분석시 P-value 값이 0.3277이 나왔으므로 기각역을 기각하지 못한다.  -> 평균은 70이다. 
+VAR CS;
+RUN; 
+
+------------------------------------------------------------------------------------------
+
+2) 독립표본 T-test : 2개 이상의 모집단에 대한 검정
+
+DATA two;
+INPUT group score @@;
+CARDS;
+1 65 1 70 1 76 1 63 1 72 1 71 1 68 1 68 2 75 2 80 2 72 2 77 2 69 2 81 2 71 2 78
+;
+RUN;
+
+PROC TTEST DATA=two COCHRAN;
+CLASS group;								# 2개의 모집단을 구분하는 class 
+VAR score;
+RUN;									# 분석시 P-value 값이 0.0105가 나왔으므로 기각역을 기각하여 평균간 차이가 존재함을 알 수 있다. 
+
+------------------------------------------------------------------------------------------
+
+3) 대응표본 T-test : 한 개체에 대해서 짝을 이룬 값들을 비교하는 경우 
+
+DATA three;
+INPUT id pretest posttest@@;
+CARDS;
+1 80 82 2 73 71 3 70 95 4 60 69 5 88 00
+6 84 71 7 65 75 8 37 60 9 91 95 10 98 99
+11 52 65 12 78 83 13 40 60 14 79 86 15 59 62
+;
+RUN;
+
+PROC TTEST DATA=three ;
+PAIRED pretest*posttest;							# 대응되어지는 변수를 A*B형태로 PAIRED명령에 넣는다
+RUN;									# P-value 값이 0.8563으로 기각역을 기각하지 못한다 = 두 시험간 차이가 크게 없다. 
+
+------------------------------------------------------------------------------------------
+
+4) 모비율 검증 Z-test 							# 확률에 대한 지정은 입력 데이터 순이다 
+
+DATA four;
+INPUT state $ count;
+CARDS;
+POOR 54
+GOOD 346
+;
+RUN;
+
+PROC FREQ DATA=four ORDER=DATA; 
+WEIGHT count;
+EXACT BINOMIAL;								# 이항분포를 따른다, 각 cell의 비율이 20%미만일 경우 신뢰하기가 어렵다. 
+TABLE state/BINOMIAL(P=0.15) ALPHA = 0.05;					# WEIGHT : 모비율 비율, P = 는 가설검정의 Null 가정이 된다. 
+RUN;									# EXACT : 적용 모형 
+									# P-value 가 0.2226으로 기각역을 기각하지 못해 비율이 동일하다라는 가정이 나오나, 백분율의 13.5가 존재해 신뢰하기 어렵다. 
+------------------------------------------------------------------------------------------
+
+5) 두 집단 모비율 T-test : 모비율의 비율차이 검정 
+
+DATA five;
+INPUT gender$ yesno $ count @@;
+CARDS;
+MALE YES 110 MALE NO 140
+FEMALE YES 104 FEMALE NO 96 
+;
+RUN;
+
+PROC FREQ DATA=five ORDER=DATA;
+WEIGHT count;							
+TABLE gender*yesno/ CHISQ FISHER NOPERCENT NOCOL;				# 두집단 * 비율 구분 -> 성별에 따른 지지의 차이 비율 여부 조사 
+RUN;									# P-value 값은 0.1063으로 기각역을 기각하지 못한다. 즉 성별에 따른 지지도 차이는 어존재하지 않는다. 
+
+------------------------------------------------------------------------------------------
+
+6) 쌍 관측에 의한 두 모비율의 비교(대응표본 모비율) : McNemal 검정 
+
+DATA six;
+INPUT pre$ post$ count @@;
+CARDS;
+YES YES 63 YES NO 4
+NO YES 21 NO NO 12
+;
+RUN;
+
+PROC FREQ DATA=six ORDER=DATA;
+WEIGHT count;
+EXACT MCNEM;
+TABLE pre*post / NOCOL;
+RUN;
+
+------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+2. 분산분석 
+
+개넘 : 
+	- 두 개 이상의 집단들의 평균값을 비교하는 데 사용하는 통계기법	
+	- 검증통계량 : F 
+	- 처치변수가 한 개인 가장 간단한 분산분석
+자료 : 
+	- 독립변수 : 범주를 나타내는 명목척도
+	- 존속변수 : 간격척도 혹은 비율척도 
+가정 : 
+	- 각 모집단은 정규분포를 이루며, 분산이 동일하다는 가정이 필요 
+	- 분산의 동질성 검증을 위해서 Levene's test가 사용  
+
+- SST = SSR + SSE 
+- MSE = SST/(n-1) 
+- mu0 = mu1 = ... = muk
+- F = MST/MSE
+- 기각역 : F >= F(k-1, n-k) 
+
+------------------------------------------------------------------------------------------
+
+1) 일원배치 분산분석(One-way ANOVA) 
+
+DATA harvest;
+INPUT fertil$ yield @@;
+CARDS;
+F1 148 F1 76 F1 134 F1 98
+F2 166 F2 153 F2 255
+F3 264 F3 214 F3 327 F3 304
+F4 335 F4 436 F4 423 F4 380 F4 465
+;
+RUN;
+
+PROC ANOVA DATA=harvest;							
+CLASS fertil;									# 사후분석 : 다중비교(귀무가설 기각하는 원인을 찾음) 
+MODEL yield = fertil;								# 종속변수 = 독립변수로 표현한다. 
+MEANS fertil / HOVTEST=BARTLETT;							# 분산 동일성 검정 : HOVTEST = 
+MEANS fertil / TUKEY CLDIFF ALPHA = 0.10;						# CLDIFF : 모평균 차이에 대한 신뢰구간
+MEANS fertil / TUKEY LINES ALPHA = 0.10;						# LINES : 그룹화 
+RUN;
+
+결과해석 : 
+	- Pr > F -> 귀무가설을 기각하는 원인 작으면 작을수록 차이가 없다. 즉 귀무가설을 기각한다. 
+	- R-Square : 1에 가까울수록 설명력이 강하다. 
+	- yield Mean : 전체 y 평균 
+
+	- Chi-Square vs Pr > Chisq : 분산 동일성 검정 귀무가설( 분산은 동일하다.) 대립가설(이분산성이 존재한다.)  
+	- = Coeff Var -> 귀무가설을 기각하지 못할경우 동분산
+
+	- Tukey CLDIFF ALPHA에서 각 그룹에 대한 신뢰구간사이에서 0이 존재할 경우 그룹의 평균이 같음을 보인다. 
+	- 0이 없을 경우 귀무가설을 기각한다(평균차이가 존재한다.) 
+
+	- Tukey LINES ALPHA에서 겹쳐져 있는 선들은 동질성이 존재한다.
+ 
+------------------------------------------------------------------------------------------
+
+2) 이원배치 분산분석(Two-way ANOVA) 
+
+개념 : 
+	- 팩토리얼 디자인(두개 이상의 독립처치변수의 수준변화에 따른 결과 변수값의 변화를 조사하기 위한 실험 디자인)
+         	- 각 처치변수를 factor라고 부름 
+	- 주효과 : 한 처치변수의 변화가 결과변수에 미치는 영향에 관한것(A 따로 B따로 결과 분석)
+	- 상호작용효과 : 다른 처치변수의 변화에 따라 한 처치변수의 결과 변수에 미치는 영향에 관한 것
+
+문제 : 제품과 소비자간 주행거리 차이가 존재하는가? 
+---------------------------------------------------------------------------------------------
+
+DATA prefer;
+DO product = "A1", "A2", "A3", "A4";
+DO customer 1 TO 5 BY 1;
+INPUT prefer @@;
+OUTPUT;END;END;
+CARDS;
+5 7 9 10 8
+2 3 4 5 2
+4 7 6 5 7
+6 4 2 2 1
+;RUN;
+
+PROC ANOVA DATA=prefer;
+CLASS product customer;
+MODEL prefer = product customer;
+MEANS product / DUNCAN TUKEY ALPHA = 0.10;
+RUN;											
+
+결과해석 : 
+	- 3번쨰 표에서 product, customer 에 따른 결과가 나온다.
+	- 첫번째 Pr > F의 값 0.0253은 기각역 안에 존재하여 product 혹은 customer 중 적어도 한개는 0이 아닌 관계가 존재한다라는 것을 의미 
+	- product Pr >F : 0.0035 기각하므로 상품의 종류에 따라서 적어도 하나의 효과는 0 이아니다.
+	- customer Pr > F : 0.8356 으로 기각하지 못하므로 customer에 따라 주행거리의 평균은 다르지 않는다. 
+	- 실재로는 MEANS customer / DUNCAN TUKEY ALPH = 0.10; 코드를 추가해야한다 ( 기각 여부를 모르므로 ) 
+
+-----------------------------------------------------------------------------------------------------
+
+DATA sales;
+DO city = "LARGE", "MIDDLE", "SMALL"; 
+DO design = "A", "B", "C";
+DO rep = 1, 2, 3;									# 반복(상호작용)이 존재하는 경우 
+INPUT sales @@;
+OUTPUT;END;END;END;
+CARDS;
+23 20 21 22 19 20 19 18 21
+22 20 19 24 25 22 20 19 22
+18 18 16 21 23 20 20 22 24
+;RUN;
+
+PROC ANOVA DATA=sales;
+CLASS city design;
+MODEL sales = city design city*design;						# city*design = city와 design의 상호작용 효과를 검정 
+MEANS city design city*design;
+RUN;
+
+PROC SUMMARY DATA=sales NWAY;
+CLASS city design;
+VAR sales;
+OUTPUT OUT = MEANOUT MEAN(sales)=MEAN;
+RUN;
+
+PROC PRINT DATA=MEANOUT;
+RUN;
+
+PROC SGPLOT data = MEANOUT;							# 상호관계의 시각화 
+	scatter x = design y = mean / group = city;
+RUN; 
+
+SYMBOL1 I=JOIN W=1 V=DOT CV=BLACK H=2;
+SYMBOL2 I=JOIN W=1 V=CIRCLE CV=BLACK H=2;
+SYMBOL3 I=JOIN W=1 V=SQUARE CV=BLACK H=2;
+PROC SGPLOT DATA=MEANOUT;							# SGPLOT을 쓴다.
+PLOT mean*city = design;
+RUN;
+
+결과해석 : 
+	- 첫번째 Pr >F의 값 0.0081은 기각역 안에 존재하며 city 와 design 중 하나는 평균 집값의 차이가 존재한다. 
+	- design Pr>F의 값이 0.0318로 기각역 안에 존재하여 집값의 평균차이가 존재한다. 
+	- city*design의 조합에 따른 평균차이도 보여준다. 평균차이가 존재한다. 
+
+
+
+
+
+
+
+
+
+
+3. 상관분석 
+	
+개념 : 
+	1. 공분산
+		- 확률변수 X의 증가에 따른 확률변수 Y의 증가 또는 감소의 경향을 나타내는 측도
+		- 공분산이 큰 양의 값을 가진다면 X가 증가할 때 Y도 증가하는 경향이 크다는 것을 나타내고 
+		- 공분산이 큰 음의 값을 가진다면 X가 증가할 때 Y는 감소하는 경향이 크다는 것을 의미한다
+ 		- 공분산이 0에 가깝다면 두 확률변수의 증감은 서로 체계적인 경향이 없다
+
+	2. 상관계수 
+		- 확률변수 X와 Y의 선형성의 정도를 나타내는 측도 
+		- -1 과 1 사이에 있음 
+
+	3. 상관계수 추정과 검정 
+		- 피어슨의 상관계수 
+		- 가설검정 : 두변수 사이에는 선형관계가 없다
+		- 대립가설 : 두변수 사이에는 선형관계가 존재한다. 
+
+	4. 스피어만의 순위상관계수
+		- Peason : 두 변수를 간격척도 혹은 비율척도로 측정한 경우
+		- Spearman 서열상관관계분석 : 변수가 서열척도로 이루어진 경우 
+		- 두 변수 모두 서열척도로 측정된 자료, 둘 이상의 대상에 대한 서열이 같은 경우에 가운데 서열을 부여 
+
+	5. 편상관계수 
+		- 어떤 두 변수가 다른 제 3의 변수와의 상관관계가 높으면 두 변수의 상관관계는 순수한 상관관계보다 높게 나타날 수 있음.
+		- 제 3의 변수를 통제한 상태에서 관심을 갖는 두 변수의 상관관계를 분석하는 것 
+
+
+1) CORR 프로시저 
+
+DATA student;
+INPUT age income expense @@;
+CARDS;
+25 170 67 28 177 62 20 165 53 16 150 48 19 160 58 21 160 59
+22 173 60 16 169 57 20 169 70 19 170 71 20 178 63 26 180 75 
+23 174 82 16 179 60 25 189 82 17 169 74 30 180 77 
+;
+RUN;
+
+PROC CORR DATA=student PEARSON SPEARMAN NOSIMPLE;						# 기술통계량을 출력하지 않는다. 
+VAR age income expense;
+RUN;
+
+결과해석 : 
+	- 피어슨 상관계수 테이블 : age - income 상관계수 0.55194로 상관간계가 꽤 높다 0.0216으로 0.05보다 낮기 때문에 상관관계가 존재한다고 해석할 수 있다. 
+	- 스피어만 상관계수 테이블 : 
+
+2) 편상관계수
+
+DATA satis;
+INPUT age age_level satis1 satis2 @@;
+CARDS;
+28 2 0 70 23 2 0 55 26 2 5 65 27 2 5 65
+25 2 10 60 26 2 20 65 29 2 25 70 31 3 25 75 
+32 3 25 80 34 3 40 85 31 3 65 75 36 3 65 90
+32 3 80 80 39 3 85 95 31 3 90 75 32 3 95 80
+;
+RUN;
+
+PROC CORR DATA=satis;
+VAR age satis1 satis2;
+RUN;
+
+PROC CORR DATA=satis;
+VAR satis1 satis2;
+PARTIAL age;
+RUN; 
+
+PROC SORT DATA=satis;									# age_level에 따른 편상관계수 영향도 비교 
+BY age_levle;	
+RUN;
+
+PROC CORR DATA=satis NOSIMPLE;
+VAR satis1 satis2;
+By age_level;
+RUN; 
+
+결과해석 : 
+	- CORR 두번째 프로시저 satis1 satis의 상관관계는 -0.10005이므로 age와 satis간의 상관관계가 영향을 많이 끼치고 있음을 알 수 있다. 
+
+
+
+
+
+
+
+4. 회귀분석 
+
+개념 : 
+	- 회귀분석 : 종속변수와 독립변수들 간의 관계를 분석하는 것, 단순회귀분석(독립변수가 한개인 경우), 다중회귀분석(독립변수가 두 개 이상인 경우) 
+	- 가정 : 독립변수와 종속변수간의 선형적관계, 오차항의 일정한 분산과 정규성, 오차항의 독립성
+	- 최소제곱추정법 : 편차의 제곱합을 최소화하는 모수의 값을 찾아 모수의 추정값으로 사용하는 방법. 
+
+1) 단순회귀분석
+
+DATA adsales;
+INPUT company adver sales @@;
+CARDS;
+01 11 23 02 19 32 02 23 36 04 26 46 05 56 93 06 62 99 07 29 49 08 30 50 09 38 65 10 39 70 11 46 71 12 49 89
+;
+RUN;
+
+PROC REG DATA=adsales;
+MODEL sales = adver;
+RUN;
+
+PROC REG DATA=adsales;
+MODEL sales = adver/P CLM ALPHA = 0.1;
+RUN; 
+
+결과해석 : 
+	- intercept : 절편, adver : 기울기  /  Intercept Pr > |t| : 귀무가설을 기각하지 못하므로 beta0 = 0이다. / adver Pr > |t| : 귀무가설을 기각하므로 0이 아니다. 
+	- Diagnosis : 모형에 대한 진단, Residual(잔차), 푸른색은 각 점에서의 신뢰구간을 의미한다. 점선은 예측값에 대한 신뢰구간을 의미한다. 
+	- 결정계수 : 선형모형이 어느정도 적합한가의 측도, R-squared, Adj R-squared(다중회귀모형에서 사용) 
+	- ANOVA 분산분석 : 선형 모형에 사용되는 계수들이 모두 0인지를 검정, Pr > F 기각 -> 적어도 하나의 변수는 0이 아니다. 
+	
+**잔차 분석**
+PROC REG DATA = adsales GRAPHICS;			
+MODEL sales = adver/R;
+OUTPUT OUT = regout STUDENT = std_r;
+RUN;
+
+**잔차 정규성 검정** 
+PROC UNIVARIATE DATA = regout;
+VAR std_r;
+HISTOGRAM std_r/NORMAL;
+RUN; 
+
+**독립성 검정**										# Durbin-Watson 2에 가까우면 독립성이 존재한다. 2.4이므로 독립성이 존재하지는 않다
+PROC REG DATA=adsales;
+MODEL sales=adver/DW;													
+RUN; 
+
+2) 다중회귀분석 
+
+LIBNAME mysas '/folders/myfolders/library';
+PROC REG DATA=mysas.FITNESS;
+MODEL Oxygen_Consumption = Age Weight RunTime Rest_Pulse Run_Pulse Maximum_Pulse;
+RUN;
+
+결과해석 : 
+	- ANOVA 분산분석 : Pr>F = <.0001 이므로 7개의 회귀계수 중 적어도 하나의 변수는 0이 아니다. 
+	- Adj R-Sq : 0.8094이므로 꽤 설명력이 있다. 
+	- Intercept (<.0001) != 0, Age (0.0363) != 0, Weight (0.1845) = 0, Rest_Pulse (0.7706) = 0 -> 유의미한 변수는 Age, RunTime, Run_Pulse, Maximum_Pulse
+
+**

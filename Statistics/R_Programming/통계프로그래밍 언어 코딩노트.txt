@@ -1,0 +1,3 @@
+1. 복수 object column indexing -> matrix[ , c('col1', 'col2')]
+2. matrix 생성시 data opperator는 row -> col 순으로 배열 
+3. While 문은 condition = TRUE 일때 작동 -> 탈출조건의 반대를 넣어주면 된다

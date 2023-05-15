@@ -1,0 +1,5 @@
+setwd("c:/R과 함께하는 다변량자료분석/R_code_data")
+acdtable<-read.table("accidenttable.txt", header=T)
+table=xtabs(빈도 ~ 벨트 +  부상 + 운전, data=acdtable)
+mjca(table)
+plot(mjca(table), main="MCRA : 삼원분할표")

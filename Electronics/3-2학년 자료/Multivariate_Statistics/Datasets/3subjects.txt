@@ -1,0 +1,11 @@
+            Mechanics Algebra Statistics
+   Student1  65  85  85
+   Student2  65  80  90
+   Student3  30  40  50
+   Student4  70  83  82
+   Student5  35  43  52
+   Student6  72  82  92
+   Student7  40  43  48
+   Student8  68  83  82
+   Student9  25  32  43
+   Student10 17  51  35

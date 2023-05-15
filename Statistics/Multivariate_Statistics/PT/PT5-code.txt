@@ -1,0 +1,383 @@
+## Practice Time 5 for FA
+
+## factor analysis
+
+### PCFA for Spearman Intelligence Data (136p)
+
+R=matrix(c(1.00, 0.83, 0.78, 0.70, 0.66, 0.63,
+           0.83, 1.00, 0.67, 0.67, 0.65, 0.57,
+           0.78, 0.67, 1.00, 0.64, 0.54, 0.51,
+           0.70, 0.67, 0.64, 1.00, 0.45, 0.51,
+           0.66, 0.65, 0.54, 0.45, 1.00, 0.40,
+           0.63, 0.57, 0.51, 0.51, 0.40, 1.00), byrow=T, nrow=6)
+subjects=c("고전", "프랑스어", "영어", "수학", "음감", "음악")
+#Spectral Decomposition
+eigen.R=eigen(R)
+V=eigen.R$vectors #Eigenvectors
+gof=eigen.R$values/sum(eigen.R$values)*100
+round(gof,2)
+
+#Estimation of Loadings Matrix: L=VD and Specific Factor
+E=diag(sqrt(eigen.R$values[1:2])) # squared root eigenvalues
+V=V[,1:2]
+L=round(V%*%E, 2) # Loadings Matrix
+L
+
+#PCFA using the principal()
+library(psych)
+pcfa<-principal(R, nfactor=2, rotate="none")
+summary(pcfa)
+pcfa
+round(pcfa$loadings[,1:2],2)
+
+
+### PCFA Steps for KLPGA(147p, 93p)
+
+#[Step 1] Data Matrix X
+Data1.3.2<-read.table("klpga.txt", header=T)
+X=Data1.3.2
+rownames<-rownames(X)
+p=ncol(X) 
+head(X)
+
+
+#[Step 2] Covariance Matrix S(or Correlation Matix R)
+R=round(cor(X),3)
+R
+
+#[Step 3] Spectral Decomposition (# of factor)
+eigen.R=eigen(R)
+round(eigen.R$values, 2) # Eigenvalues
+V=round(eigen.R$vectors, 2) # Eigenvectors
+V
+
+#[Step 4] Number of factors : m (# of factor)
+gof=eigen.R$values/p*100 # Goodness-of fit
+round(gof, 3) # contribution rate
+plot(eigen.R$values, type="b", main="Scree Graph", xlab="Factor Number", ylab="Eigenvalue")
+
+#[Step 5]Factor Loadings and Communality
+V2=V[,1:2]
+L=V2%*%diag(sqrt(eigen.R$values[1:2])) # Loading matrix : 인자적재 행렬
+rownames(L) = colnames(X)
+colnames(L) = c("요인1","요인2")
+round(L, 3)
+round(diag(L%*%t(L)), 3) # Communality: 공통성 -> 설명력과 유사한 느낌
+
+#[Step 6]Specific Variance : 특정분산(Psi) ( 1- Communality )
+Psi=diag(R-L%*%t(L))
+round(Psi, 3)
+
+#{Step 7] Residual Matrix ( 전체 = 공통성 + 특정분산 + 잔차 )
+Rm = R-(L%*%t(L) + diag(Psi))
+round(Rm, 3)
+
+# PCFA using the principal()
+library(psych)
+pcfa<-principal(R, rotate="none")
+pcfa
+
+round(pcfa$values, 2)
+gof=pcfa$values/p*100 # Goodness-of fit
+round(gof, 3)
+
+
+pcfa<-principal(R, nfactors=2, rotate="none")
+round(pcfa$communality,3) # 공통성(Communality)
+1-round(pcfa$communality,3) # 특정분산(Psi-uniqueness)
+round(pcfa$residual,3) # 잔차(Residual)
+
+
+### MLFA Steps for KLPGA (no rotation) (157p)
+
+# ML Estimation using the factanal( )
+library(psych)
+Z <- scale(X, scale=T)
+mlfa<-factanal(Z, factors = 2, rotation="none", score="regression")
+mlfa # number of Factors -> Cumulative var!
+
+# Residual Matrix
+L=mlfa$loading[,1:2] # factor loading 
+Psi=mlfa$uniquenesses # specific variance
+Rm = R-(L%*%t(L) + diag(Psi)) 
+round(Rm, 3)
+
+#-----------------------------------------------------------------------------#
+# Factor Loadings Plot(before rotation) (161p)
+par(mfrow=c(1,2))
+lim<-range(pretty(L))
+plot(L[,1], L[,2],main="Plot of Factor Loadings : none ",  xlab="f1", ylab="f2",
+     xlim=lim, ylim=lim)
+text(L[,1], L[, 2], labels=rownames(L), cex=0.8, col="blue", pos=1)
+abline(v=0, h=0)
+arrows(0,0, L[,1], L[, 2], col=2, code=2, length=0.1)
+
+# ML Estimation using the factanal( ) + Varimax rotation
+mlfa<-factanal(Z, factors = 2, rotation="varimax", scores="regression")
+mlfa
+
+# Residual Matrix
+L=mlfa$loading[, 1:2]
+L
+Psi=mlfa$uniquenesses
+Rm = R-(L%*%t(L) + diag(Psi))
+round(Rm, 3)
+
+# Factor Loadings Plot(after rotation) 
+lim<-range(pretty(L))
+plot(L[,1], L[,2],main="Plot of Factor Loadings : Varimax ",  xlab="f1", ylab="f2",
+     xlim=lim, ylim=lim)
+text(L[,1], L[, 2], labels=rownames(L), cex=0.8, col="blue", pos=1)
+abline(v=0, h=0)
+arrows(0,0, L[,1], L[, 2], col=2, code=2, length=0.1)
+
+biplot(mlfa$scores, mlfa$loadings, main="Plot of Factor Loadings : Varimax", xlab="f1", ylab="f2")
+abline(v=0, h=0)
+
+
+## 참고 - PCFA의 Varimax
+library(psych)
+pcfa<-principal(Z, nfactor=2, rotate="none")
+summary(pcfa)
+pcfa
+round(pcfa$loadings[,1:2],2)
+
+par(mfrow=c(1,2))
+biplot(pcfa$scores, pcfa$loadings, main="Plot of Factor Loadings : none", xlab="f1", ylab="f2")
+abline(v=0, h=0)
+
+pcfa<-principal(Z, nfactor=2, rotate="varimax")
+biplot(pcfa$scores, pcfa$loadings, main="Plot of Factor Loadings : none", xlab="f1", ylab="f2")
+abline(v=0, h=0)
+
+pcfa<-principal(R, nfactor=2, rotate="none")
+pcfa$scores
+
+
+######################################################################################################
+### air pollution data(170p)
+Data2.8.2<-read.table("airpollution.txt", header=T)
+X=Data2.8.2
+rownames<-rownames(X)
+p=ncol(X) 
+n=nrow(X)
+boxplot(X)
+Z<-scale(X, scale=T)
+
+# Covariance Matrix S(or Correlation Matix R)
+R=round(cor(X),3)
+R
+
+##### PCFA using the principal( ) #######
+library(psych)
+pcfa<-principal(Z, nfactors=3, rotate="varimax")
+#R(상관행렬)과 Z(표준화자료행렬) 둘다 사용 가능하지만, pcfa$scores를 이용해야하기에 Z를 사용.
+pcfa
+round(pcfa$values, 3)
+gof=pcfa$values/p*100 # Goodness-of fit
+round(gof, 3)
+
+# Residual Matrix
+L=pcfa$loading[, 1:3]
+round(L, 3)
+Psi=pcfa$uniquenesses
+round(Psi, 3)
+Rm = R-(L%*%t(L) + diag(Psi))
+round(Rm, 3)
+
+# Plot of PC Factor Loadings 
+par(mfrow=c(2,2))
+lim<-range(pretty(L))
+plot(L[,1], L[,2],main="(a) PC Factor Loadings : f1 and f2",  xlab="f1", ylab="f2",
+     xlim=lim, ylim=lim)
+text(L[,1], L[, 2], labels=rownames(L), cex=0.8, col="blue", pos=1)
+abline(v=0, h=0)
+arrows(0,0, L[,1], L[, 2], col=2, code=2, length=0.1)
+
+plot(L[,1], L[,3],main="(b) PC Factor Loadings : f1 and f3",  xlab="f1", ylab="f3",
+     xlim=lim, ylim=lim)
+text(L[,1], L[, 3], labels=rownames(L), cex=0.8, col="blue", pos=1)
+abline(v=0, h=0)
+arrows(0,0, L[,1], L[, 3], col=2, code=2, length=0.1)
+
+plot(L[,2], L[,3],main="(c) PC Factor Loadings : f2 and f3",  xlab="f2", ylab="f3",
+     xlim=lim, ylim=lim)
+text(L[,2], L[, 3], labels=rownames(L), cex=0.8, col="blue", pos=1)
+abline(v=0, h=0)
+arrows(0,0, L[,2], L[, 3], col=2, code=2, length=0.1)
+
+
+# Factor Scores : Regression Method
+fpc=pcfa$scores
+round(fpc, 3)
+
+# Plot of Factor Scores : PFA 
+par(mfrow=c(2,2))
+par(pty="s")
+lim<-range(pretty(fpc))
+plot(fpc[,1], fpc[,2],main="(a) Factor Scores : f1 and f2",  xlab="f1", ylab="f2",
+     xlim=lim, ylim=lim)
+text(fpc[,1], fpc[,2], labels=rownames(fpc), cex=0.8, col="blue", pos=1)
+abline(v=0, h=0)
+
+plot(fpc[,1], fpc[,3],main="(b) Factor Scores : f1 and f3",  xlab="f1", ylab="f3",
+     xlim=lim, ylim=lim)
+text(fpc[,1], fpc[,3], labels=rownames(fpc), cex=0.8, col="blue", pos=1)
+abline(v=0, h=0)
+
+plot(fpc[,2], fpc[,3],main="(c) Factor Scores : f2 and f3",  xlab="f2", ylab="f3",
+     xlim=lim, ylim=lim)
+text(fpc[,2], fpc[,3], labels=rownames(fpc), cex=0.8, col="blue", pos=1)
+abline(v=0, h=0)
+
+### Using Biplot()
+par(mfrow=c(2,2))
+biplot(pcfa$scores[,1:2], pcfa$loadings[,1:2], main="(a) Factor Scores : f1 and f2",  xlab="f1", ylab="f2")
+abline(v=0, h=0)
+biplot(pcfa$scores[,1:3], pcfa$loadings[,1:3], main="(b) Factor Scores : f1 and f3",  xlab="f1", ylab="f3")
+abline(v=0, h=0)
+biplot(pcfa$scores[,2:3], pcfa$loadings[,1:3], main="(c) Factor Scores : f2 and f3",  xlab="f2", ylab="f3")
+abline(v=0, h=0)
+
+
+##### MLFA using the factanal( ) ####
+library(psych)
+mlfa<-factanal(Z, factors = 3, rotation="varimax", score="regression")
+mlfa
+
+# Residual Matrix
+Lm=mlfa$loading[, 1:3]
+round(L, 3)
+Psi=mlfa$uniquenesses
+Rm = R-(Lm%*%t(Lm) + diag(Psi))
+round(Rm, 3)
+
+# ML Factor Loadings Plot
+par(mfrow=c(2,2))
+lim<-range(pretty(L))
+plot(Lm[,1], Lm[,2],main="(a) ML Factor Loadings : f1 and f2",  xlab="f1", ylab="f2",
+     xlim=lim, ylim=lim)
+text(Lm[,1], Lm[, 2], labels=rownames(L), cex=0.8, col="blue", pos=1)
+abline(v=0, h=0)
+arrows(0,0, Lm[,1], Lm[, 2], col=2, code=2, length=0.1)
+
+plot(Lm[,1], Lm[,3],main="(b) ML Factor Loadings : f1 and f3",  xlab="f1", ylab="f3",
+     xlim=lim, ylim=lim)
+text(Lm[,1], Lm[, 3], labels=rownames(L), cex=0.8, col="blue", pos=1)
+abline(v=0, h=0)
+arrows(0,0, Lm[,1], Lm[, 3], col=2, code=2, length=0.1)
+
+plot(Lm[,2], Lm[,3],main="(c) ML Factor Loadings : f2 and f3",  xlab="f2", ylab="f3",
+     xlim=lim, ylim=lim)
+text(Lm[,2], Lm[, 3], labels=rownames(L), cex=0.8, col="blue", pos=1)
+abline(v=0, h=0)
+arrows(0,0, Lm[,2], Lm[, 3], col=2, code=2, length=0.1)
+
+# Factor Scores : Regression Method
+fml=mlfa$scores
+round(fml, 3)
+
+# Plot of Factor Scores : MLFA
+par(mfrow=c(2,2))
+par(pty="s")
+lim<-range(pretty(fml))
+plot(fml[,1], fml[,2],main=" (a) Factor Scores : f1 and f2",  xlab="f1", ylab="f2",
+     xlim=lim, ylim=lim)
+text(fml[,1], fml[,2], labels=rownames(fml), cex=0.8, col="blue", pos=1)
+abline(v=0, h=0)
+
+plot(fml[,1], fml[,3],main=" (b) Factor Scores : f1 and f3",  xlab="f1", ylab="f3",
+     xlim=lim, ylim=lim)
+text(fml[,1], fml[,3], labels=rownames(fml), cex=0.8, col="blue", pos=1)
+abline(v=0, h=0)
+
+plot(fml[,2], fml[,3],main="(c) Factor Scores : f2 and f3",  xlab="f2", ylab="f3",
+     xlim=lim, ylim=lim)
+text(fml[,2], fml[,3], labels=rownames(fml), cex=0.8, col="blue", pos=1)
+abline(v=0, h=0)
+
+### Using Biplot()
+par(mfrow=c(2,2))
+biplot(mlfa$scores[,1:2], mlfa$loadings[,1:2], main="(a) Factor Scores : f1 and f2",  xlab="f1", ylab="f2")
+abline(v=0, h=0)
+biplot(mlfa$scores[,1:3], mlfa$loadings[,1:3], main="(b) Factor Scores : f1 and f3",  xlab="f1", ylab="f3")
+abline(v=0, h=0)
+biplot(mlfa$scores[,2:3], mlfa$loadings[,1:3], main="(c) Factor Scores : f2 and f3",  xlab="f2", ylab="f3")
+abline(v=0, h=0)
+
+# Plot of Factor Scores : Pairs(MLFA, PCFA)
+par(pty="s")
+par(mfrow=c(2,2))
+plot(fml[,1], fpc[,1],main="(a) Factor Scores : ml f1 and pc f1",  xlab="ml f1", ylab="pc f1",
+     xlim=lim, ylim=lim)
+text(fml[,1], fpc[,1], labels=rownames(fml), cex=0.8, col="blue", pos=1)
+
+abline(v=0, h=0)
+
+plot(fml[,2], fpc[,2],main="(b) Factor Scores : ml f2 and pc f2",  xlab="ml f2", ylab="pc f2",
+     xlim=lim, ylim=lim)
+text(fml[,2], fpc[,2], labels=rownames(fml), cex=0.8, col="blue", pos=1)
+
+abline(v=0, h=0)
+
+plot(fml[,3], fpc[,3],main="(c) Factor Scores : ml f3 and pc f3",  xlab="ml f3", ylab="pc f3",
+     xlim=lim, ylim=lim)
+text(fml[,3], fpc[,3], labels=rownames(fml), cex=0.8, col="blue", pos=1)
+
+abline(v=0, h=0)
+
+plot(-fml[,3], fpc[,3],main="(d) Factor Scores : (-)ml f3 and pc f3",  xlab="(-)ml f3", ylab="pc f3",
+     xlim=lim, ylim=lim)
+text(-fml[,3], fpc[,3], labels=rownames(fml), cex=0.8, col="blue", pos=1)
+abline(v=0, h=0)
+
+
+
+
+#######################################################################################################
+# Biplot based on the Singular Value Decomposition (181p) (just read it for reference)
+svd.Z <- svd(Z) 
+U <- svd.Z$u    
+V <- svd.Z$v 
+D <- diag(svd.Z$d)
+F <- (sqrt(n-1)*U)[,1:2]  # Factor Scores Matrix : F
+L <- (sqrt(1/(n-1))*V%*%D)[,1:2] # Factor Loadings Matrix : Lambda
+C<- rbind(F, L)
+rownames(F)<-rownames(X)
+rownames(L)<-colnames(X)
+
+# Godness-of-fit
+eig <- (svd.Z$d)^2 
+per <- eig/sum(eig)*100
+gof <- sum(per[1:2])
+per
+gof
+
+
+# Biplot: Joint Plot of Factor Loadings and Scores
+par(mfrow=c(1,2))
+par(pty="s")
+lim1 <- range(pretty(L))
+lim2 <- range(pretty(F))
+biplot(F,L, xlab="f1",ylab="f2", main=" (a) Unrotated Biplot",
+       xlim=lim2,ylim=lim2,cex=0.8,pch=16)
+abline(v=0,h=0)
+
+# Varimax Rotated Biplot: Joint Plot of Rotated Factor Loadings and Scores
+
+varimax<-varimax(L)
+Lt = varimax$loadings 
+T=varimax$rotmat
+T
+Ft= F%*%T
+biplot(Ft,Lt, xlab="f1",ylab="f2", main="(b) Varimax Rotated Biplot",
+       xlim=lim2,ylim=lim2,cex=0.8,pch=16)
+abline(v=0,h=0)
+
+##### Use principal() and factonal()!
+##### You should use Data Matrix Z or H to get factor scores.
+##### Biplot (Factor scores + Factor Loadings)
+
+
+# https://dogmas.tistory.com/entry/%EC%9D%B8%EC%9E%90%EB%B6%84%EC%84%9DFactor-analysis%EA%B3%BC-%EC%A3%BC%EC%84%B1%EB%B6%84%EB%B6%84%EC%84%9DPrincipal-component-analysis%EC%9D%98-%EC%B0%A8%EC%9D%B4%EC%99%80-%EB%B9%84%EC%8A%B7%ED%95%9C-%EC%A0%90-%EB%B9%84%EA%B5%90-SPSS-%EC%82%AC%EC%9A%A9%EC%84%A4%EB%AA%85%EC%84%9C-25
+# https://datacookbook.kr/39

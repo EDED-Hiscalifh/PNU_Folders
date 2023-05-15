@@ -1,0 +1,36 @@
+---
+title: "Mid_Project"
+author: "JSG"
+date: '2022-04-25'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+---
+
+## Library importing
+```{r}
+library(dslabs)
+library(ggplot2)
+library(tidyr)
+```
+
+## Dataset loading
+```{r}
+path1 <- "Data_Mining/Datasets/breast-cancer.txt"
+path2 <- "Data_Mining/Datasets/Teaching Assistant Evaluation.txt"
+path3 <- "Data_Mining/Datasets/Tic-Tac-Toe Endgame.txt"
+
+bc_dataset <- read.table(path1, sep = ',')
+tae_dataset <- read.table(path2, sep = ',')
+ttt_dataset <- read.table(path3, sep = ',')
+```
+
+## 1. breast-cacner 
+
+```{r}
+str(bc_dataset)
+```

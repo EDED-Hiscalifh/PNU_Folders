@@ -1,0 +1,133 @@
+library(class)
+data(iris3) # 3차원 배열 자료(50× 4 × 3)
+train <- rbind(iris3[1:25,,1], iris3[1:25,,2], iris3[1:25,,3]) # 행렬 객체임
+test <- rbind(iris3[26:50,,1], iris3[26:50,,2], iris3[26:50,,3])
+cl <- factor(c(rep("s",25), rep("c",25), rep("v",25)))
+knn(train, test, cl, k = 3, prob=TRUE)
+
+##################################################
+install.packages('devtools')
+library(devtools)
+remotes::install_github("cran/DMwR")
+
+library(DMwR)
+data(iris)
+idxs <- sample(1:nrow(iris), as.integer(0.7*nrow(iris)))
+trainIris <- iris[idxs,]
+testIris <- iris[-idxs,]
+nn3 <- kNN(Species ~ ., trainIris, testIris, norm=FALSE, k=3)
+table(testIris[,'Species'], nn3)
+
+nn5 <- kNN(Species ~ ., trainIris, testIris, norm=TRUE, k=5)
+
+
+##################################################
+install.packages('kknn')
+library(kknn)
+data(iris)
+m <- dim(iris)[1]
+val <- sample(1:m, size=round(m/3), replace=FALSE, prob=rep(1/m, m))
+iris.learn <- iris[-val,]
+iris.valid <- iris[val,]
+iris.kknn <- kknn(Species~., iris.learn, iris.valid, distance=1, kernel="triangular")
+summary(iris.kknn)
+
+fit <- fitted(iris.kknn)
+table(iris.valid$Species, fit)
+
+pcol <- as.character(as.numeric(iris.valid$Species))
+pairs(iris.valid[1:4], pch=pcol, col=c("green3", "red")[(iris.valid$Species != fit)+1])
+
+
+##################################################
+full <- data.frame(name=c("McGwire,Mark", "Bonds,Barry",
+					"Helton,Todd", "Walker,Larry",
+					"Pujols,Albert", "Pedroia,Dustin"),
+			lag1=c(100,90,75,89,95,70),
+			lag2=c(120,80,95,79,92,90),
+			Runs=c(65,120,105,99,65,100))
+full
+
+library(kknn)
+train <- full[full$name!="Bonds,Barry",]
+test <- full[full$name=="Bonds,Barry",]
+k <- kknn(Runs~lag1+lag2, train=train, test=test, k=2, distance=1)
+fit <- fitted(k)
+fit
+
+names(k)
+k$fitted.values
+
+k$CL
+k$W
+k$C
+train[c(k$C),]
+
+install.packages('FNN')
+library(FNN)
+get.knnx(data=train[,c("lag1","lag2")], query=test[,c("lag1","lag2")], k=2)
+train[c(3,4), "name"]
+
+##################################################
+install.packages('ISLR')
+library(ISLR)
+library(caret)
+#install.packages('e1071')
+library(e1071)
+
+set.seed(100)
+indxTrain <- createDataPartition(y = Smarket$Direction, p = 0.75, list = FALSE)
+training <- Smarket[indxTrain,]
+testing <- Smarket[-indxTrain,]
+
+prop.table(table(training$Direction)) * 100
+prop.table(table(testing$Direction)) * 100
+prop.table(table(Smarket$Direction)) * 100
+
+trainX <- training[,names(training) != "Direction"] # 반응변수를 제외
+preProcValues <- preProcess(x = trainX, method = c("center", "scale"))
+preProcValues
+
+set.seed(200)
+ctrl <- trainControl(method="repeatedcv", repeats = 3)
+# 추가 가능 옵션: classProbs=TRUE,summaryFunction = twoClassSummary
+knnFit <- train(Direction ~ ., data = training, method = "knn", trControl = ctrl,
+		preProcess = c("center","scale"), tuneLength = 20)
+
+# k-NN 적합 결과
+knnFit
+plot(knnFit)
+
+knnPredict <- predict(knnFit, newdata = testing )
+confusionMatrix(knnPredict, testing$Direction )
+mean(knnPredict == testing$Direction)
+
+
+# 2 클래스 요약함수 확인
+set.seed(200)
+ctrl <- trainControl(method="repeatedcv", repeats = 3,
+			classProbs=TRUE, summaryFunction = twoClassSummary)
+knnFit <- train(Direction ~ ., data = training, method = "knn",
+			trControl = ctrl, preProcess = c("center","scale"), tuneLength = 20)
+# k-NN 적합 결과
+knnFit
+
+# 이웃의 수에 대한 정확도 그림(반복된 교차타당법에 의한)
+plot(knnFit, print.thres = 0.5, type="S")
+
+# 검증용 자료에 대한 예측
+knnPredict <- predict(knnFit, newdata = testing )
+confusionMatrix(knnPredict, testing$Direction ) # 정오분류행렬
+mean(knnPredict == testing$Direction)
+
+# ROC 곡선 그리기
+install.packages('pROC')
+library(pROC)
+knnPredict <- predict(knnFit, newdata = testing , type="prob")
+knnPredict
+
+knnROC <- roc(testing$Direction, knnPredict[,"Down"], levels = levels(testing$Direction))
+knnROC
+
+plot(knnROC, type="S", print.thres= 0.5) # 기준값 0.5일 때의 결과를 표시
+
